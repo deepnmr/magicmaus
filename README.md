@@ -5,9 +5,10 @@ A hybrid methyl-NMR assignment engine that **fuses the two sibling projects**
 [`../magic/`](../magic) (MAGIC, Monneau et al., *J. Biomol. NMR* 2017) into one
 program that is strictly better than either alone.
 
-**New here? Start with the [step-by-step tutorial](TUTORIAL.md)** (also
-[`TUTORIAL.pdf`](TUTORIAL.pdf)) — a tiny 8-methyl walkthrough that shows every
-output field and the intensity lever in action.
+**New here?** Start with the **[8-methyl dummy tutorial](TUTORIAL.md)**
+([PDF](TUTORIAL.pdf)) for the mechanics, then the **[maltose-binding protein
+tutorial](TUTORIAL_MBP.md)** ([PDF](TUTORIAL_MBP.pdf)) for the real 192-methyl
+run and the three-way comparison against MAGIC and MAUS.
 
 Same problem — assign methyl ¹H/¹³C HMQC peaks to the methyls of a known
 structure using NOESY contacts. Two opposite philosophies:
