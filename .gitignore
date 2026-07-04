@@ -1,0 +1,12 @@
+# virtualenv / bytecode
+.venv/
+__pycache__/
+*.pyc
+
+# logs / scratch
+*.log
+
+# generated artifacts (reproducible from the scripts)
+mbp_calls.tsv
+mbp_noesy_intensity.tsv
+magic_run_intensity/
