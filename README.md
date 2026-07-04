@@ -5,6 +5,10 @@ A hybrid methyl-NMR assignment engine that **fuses the two sibling projects**
 [`../magic/`](../magic) (MAGIC, Monneau et al., *J. Biomol. NMR* 2017) into one
 program that is strictly better than either alone.
 
+A short write-up in *Bioinformatics* Application Note form is in
+[`manuscript.md`](manuscript.md) / [`magicmaus_AppNote.docx`](magicmaus_AppNote.docx)
+(Fig. 1 rendered by [`make_figure.py`](make_figure.py)).
+
 **New here?** Start with the **[8-methyl dummy tutorial](TUTORIAL.md)**
 ([PDF](TUTORIAL.pdf)) for the mechanics, then the **[maltose-binding protein
 tutorial](TUTORIAL_MBP.md)** ([PDF](TUTORIAL_MBP.pdf)) for the real 192-methyl
