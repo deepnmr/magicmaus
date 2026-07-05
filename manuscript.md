@@ -28,9 +28,9 @@ objective and is frequently wrong. We present **magicmaus**, a hybrid that uses
 the satisfiability layer to bound the search to a certifiably truth-containing
 set of per-peak candidates, then applies an intensity-weighted NOE score *within*
 those bounds to commit to a single, globally coherent, injective assignment
-carrying a per-peak confidence tier. Across six benchmark targets (43–192
-methyls) built from real BMRB shifts and structures, magicmaus commits a single
-answer for every peak at 33–100% methyl-level accuracy — up to an order of
+carrying a per-peak confidence tier. Across seven benchmark targets (43–257
+methyls) built from real shifts and structures, magicmaus commits a single
+answer for every peak at 30–100% methyl-level accuracy — up to an order of
 magnitude above the scoring method — while retaining the constraint method's
 100% never-exclude guarantee as an explicit ambiguity envelope. On
 maltose-binding protein (192 methyls) it assigns 72.9% of methyls correctly
@@ -125,40 +125,46 @@ three methyl protons, and each observed methyl becomes an anonymous HMQC peak
 Because BMRB deposits no NOESY peak list, a 3D (H)CCH network is simulated from
 the structure (a cross peak for every methyl pair within 7.9 Å, both directions)
 with 1/r^6^ intensities; the identical network is supplied to all three engines.
-We benchmark six targets: ubiquitin (BMRB 6457, PDB 1UBQ; the reference protein
+We benchmark seven targets: ubiquitin (BMRB 6457, PDB 1UBQ; the reference protein
 of biomolecular NMR), *E. coli* maltose-binding protein (MBP; BMRB 7114, PDB
-1ANF; Ulrich *et al.*, 2008; Spurlino *et al.*, 1991; 192 methyls) and the four
+1ANF; Ulrich *et al.*, 2008; Spurlino *et al.*, 1991; 192 methyls), the four
 de-novo blind targets of the MAUS study (Nerli *et al.*, 2021) — interleukin-2
-and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — spanning 43–192
-observed methyls (Table 1).
+and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — and malate synthase G
+(MSG; PDB 1D8C), at 257 methyls the largest single-chain protein whose Ile/Leu/Val
+methyls have been assigned by solution NMR and the classic large-protein methyl
+benchmark, spanning 43–257 observed methyls (Table 1).
 
 **Results.** MAGIC, scoring over the full type-matched space, assigned 6–12% of
 methyls correctly where it converged (Table 1) — consistent with its reported
 4–10% on structure-simulated NOESY and with the near-flat-landscape limitation of
-full-space scoring; on the two Leu-dense Cas9 domains it did not return within a
-15-min budget, itself illustrating the cost of unbounded scoring. MAUS resolved
-8–27% of peaks uniquely (all correct) and abstained on the rest, with the truth
-in the option set for 100% of peaks on every target; its result was unchanged by
+full-space scoring; on the two Leu-dense Cas9 domains and on MSG it did not return
+within a 15-min budget, itself illustrating the cost of unbounded scoring. MAUS
+resolved 2–35% of peaks uniquely (all correct) and abstained on the rest, with the
+truth in the option set for 100% of peaks on every target; its result was unchanged by
 the intensity column, as its boolean constraints cannot use it. magicmaus
 committed a single answer for every peak while preserving that **100%**
 never-exclude envelope throughout, at **73–100%** methyl-level accuracy on the
 smaller targets (a perfect 43/43 on ubiquitin) and **72.9%** on MBP — up to an
-order of magnitude above scoring over the full space. The one hard case is REC3, the largest and most degenerate
-(50 of 85 methyls are Leu), at 32.9%: an achiral NOE network leaves many geminal
-pairs and shift-degenerate peaks genuinely unresolvable, which magicmaus flags as
-`ambiguous` and reports as full option sets rather than guessing. Folding the
+order of magnitude above scoring over the full space. The hard cases are the
+targets whose 3D (H)CCH network yields few firm NOEs: REC3 (32.9%; 50 of 85
+methyls Leu) and above all MSG, where only 262 cross peaks resolve to a firm
+constraint so 95 of 257 peaks carry none and the true option sets are large —
+magicmaus commits 29.6% (38.5% with HMBC) where MAGIC does not converge at all,
+still under the 100% envelope. On these, an achiral NOE network leaves many
+geminal pairs and shift-degenerate peaks genuinely unresolvable, which magicmaus
+flags as `ambiguous` and reports as full option sets rather than guessing. Folding the
 discarded ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on
 the sparser targets (IL-2, REC2, MBP: +1–7 points) but not on the densely
 degenerate ones (HNH, REC3), so it is offered as an option, not a default. Adding
-one further optional input — an HMBC-HMQC experiment (`--hmbc`) that links each
-Leu/Val geminal pair — lifts accuracy on every target (Table 1, +HMBC), most where
+one further optional input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*,
+2019) that links each Leu/Val geminal pair — lifts accuracy on every target (Table 1, +HMBC), most where
 degeneracy is worst: REC3 rises 28.2% → 45.9% and MBP 79.7% → 89.1%, since geminal
 ambiguity is precisely what an achiral NOE network cannot break. Running the same
 scoring inside the MAUS bounds thus yields roughly an order of magnitude more
 single-answer accuracy than scoring over the full space, at no cost to the
 certainty guarantee, and improves monotonically as experimental input is added.
 
-**Table 1.** Methyl-level accuracy on five targets, all engines scored on the
+**Table 1.** Methyl-level accuracy on seven targets, all engines scored on the
 same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
 contains the truth (never-exclude guarantee). n.c. = did not converge within a
 15-min budget.
@@ -171,8 +177,11 @@ contains the truth (never-exclude guarantee). n.c. = did not converge within a
 | REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 74.6% | 76.2% | 82.5% | 100% |
 | REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 8.2% | 32.9% | 28.2% | 45.9% | 100% |
 | MBP | 7114 / 1ANF | 192 | 5.7% | 26.6% | 72.9% | 79.7% | 89.1% | 100% |
+| MSG | SI† / 1D8C | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
 
-The MAUS column is the fraction of peaks it commits uniquely (all correct); on the
+†MSG methyl shifts have no BMRB deposit; they are digitised from the reference
+assignment table in the open-access Supplementary Information of Pritišanac *et
+al.* (2019). The MAUS column is the fraction of peaks it commits uniquely (all correct); on the
 rest it abstains, so its coverage is the Envelope column (100%). The +HMBC column
 adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft,
 forcing each Leu/Val geminal pair onto its two structural methyls.
@@ -232,6 +241,10 @@ NMR spectra from large proteins. *Prog. Nucl. Magn. Reson. Spectrosc.*,
 Rosenzweig,R. and Kay,L.E. (2014) Bringing dynamic molecular machines into focus
 by methyl-TROSY NMR. *Annu. Rev. Biochem.*, **83**, 291–315.
 
+Siemons,L., Mackenzie,H.W., Shukla,V.K. and Hansen,D.F. (2019) Intra-residue
+methyl–methyl correlations for valine and leucine residues in large proteins from
+a 3D-HMBC-HMQC experiment. *J. Biomol. NMR*, **73**, 749–757.
+
 Spurlino,J.C., Lu,G.-Y. and Quiocho,F.A. (1991) The 2.3-Å resolution structure of
 the maltose- or maltodextrin-binding protein, a primary receptor of bacterial
 active transport and chemotaxis. *J. Biol. Chem.*, **266**, 5202–5219.
@@ -255,7 +268,8 @@ prunes candidates from up to ~60 to 1–3; an intensity-weighted NOE score
 (MAGIC-style), applied only within those bounds via a SAT-feasible seed and
 feasibility-preserving coordinate ascent, commits to a single coherent map with a
 per-peak confidence tier (unique / scored / ambiguous). (**B**) Methyl-level
-accuracy on maltose-binding protein (192 methyls), all engines scored on the same
-1/r^6^ intensity NOESY. MAUS is decisive on 26.6% of peaks (rest abstain); MAGIC
-and magicmaus commit on all 192. Green markers denote the 100% truth-in-envelope
-guarantee, preserved by MAUS and magicmaus.](figure1.png)
+accuracy across the seven benchmark targets (43–257 methyls, ordered by size),
+all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)
+versus full-space MAGIC (red; hatched *n.c.* where scoring did not converge within
+a 15-min budget). Green markers denote the 100% truth-in-envelope guarantee,
+preserved on every target.](figure1.png)

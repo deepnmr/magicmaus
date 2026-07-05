@@ -101,17 +101,39 @@ def methyl_proton_shift(shifts: dict, resnum: int, carbon: str):
   return sum(vals) / len(vals) if vals else None
 
 
-def build(pdb: str, star: str, labeling: dict, noe_cut: float):
+def parse_shifts_tsv(path: str) -> dict:
+  """Read a methyl-shift table `resnum res_type atom H_ppm C_ppm` (already-paired
+  1H/13C per methyl, e.g. digitised from a paper's supplement) into
+  {(res_num, atom): (h, c)}."""
+  hc: dict = {}
+  for line in Path(path).read_text().splitlines():
+    if not line.strip() or line.startswith('resnum') or line.startswith('#'):
+      continue
+    f = line.split('\t')
+    hc[(int(f[0]), f[2])] = (float(f[3]), float(f[4]))
+  return hc
+
+
+def build(pdb: str, star: str, labeling: dict, noe_cut: float, shifts_tsv: str = None):
   methyls = maus.parse_structure(Path(pdb).read_text().splitlines(), labeling)
-  shifts = parse_bmrb_shifts(star)
+
+  if shifts_tsv:                    # paired H/C table (paper supplement)
+    hc = parse_shifts_tsv(shifts_tsv)
+    def get_hc(m):
+      return hc.get((m.res_num, m.atom))
+  else:                             # BMRB: carbon from atom, proton = mean of methyl H
+    shifts = parse_bmrb_shifts(star)
+    def get_hc(m):
+      c = shifts.get((m.res_num, m.atom))
+      h = methyl_proton_shift(shifts, m.res_num, m.atom)
+      return (h, c) if (c is not None and h is not None) else None
 
   observed = []          # (methyl, h_ppm, c_ppm)
   for m in methyls:
-    c = shifts.get((m.res_num, m.atom))
-    h = methyl_proton_shift(shifts, m.res_num, m.atom)
-    if c is None or h is None:
+    v = get_hc(m)
+    if not v or v[0] is None or v[1] is None:
       continue
-    observed.append((m, round(h, 3), round(c, 3)))
+    observed.append((m, round(v[0], 3), round(v[1], 3)))
 
   observed.sort(key=lambda t: (t[0].res_num, t[0].atom))
   peak_of = {id(m): f'P{i+1}' for i, (m, _h, _c) in enumerate(observed)}
@@ -161,17 +183,22 @@ def write_lists(observed, peak_of, out_dir: str, noe_cut: float):
 
 
 def main(argv=None):
-  ap = argparse.ArgumentParser(description='Build peak lists from PDB + BMRB.')
+  ap = argparse.ArgumentParser(description='Build peak lists from PDB + BMRB (or a paired H/C shift TSV).')
   ap.add_argument('pdb')
-  ap.add_argument('bmrb', help='BMRB NMR-STAR .str file')
+  ap.add_argument('bmrb', nargs='?', help='BMRB NMR-STAR .str file (omit if --shifts-tsv)')
+  ap.add_argument('--shifts-tsv', default=None,
+                  help='paired methyl-shift table (resnum res_type atom H_ppm C_ppm) '
+                       'instead of a BMRB deposition')
   ap.add_argument('--out-dir', required=True)
   ap.add_argument('--noe-cut', type=float, default=8.0,
                   help='methyl-methyl distance (A) that produces a NOESY cross peak')
   ap.add_argument('--labeling', default='A;I;L;M;T;V')
   args = ap.parse_args(argv)
 
+  if not args.bmrb and not args.shifts_tsv:
+    ap.error('provide a BMRB .str file or --shifts-tsv')
   labeling = maus.parse_labeling(args.labeling)
-  observed, peak_of = build(args.pdb, args.bmrb, labeling, args.noe_cut)
+  observed, peak_of = build(args.pdb, args.bmrb, labeling, args.noe_cut, args.shifts_tsv)
   n_hmqc, n_noe_pairs, n_gem = write_lists(observed, peak_of, args.out_dir, args.noe_cut)
 
   by_type = {}

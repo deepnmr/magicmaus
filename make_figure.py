@@ -7,8 +7,8 @@ from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 plt.rcParams.update({'font.family': 'DejaVu Sans', 'font.size': 8})
 
 fig = plt.figure(figsize=(7.2, 3.1), dpi=300)
-gsA = fig.add_axes([0.015, 0.02, 0.60, 0.96]); gsA.axis('off'); gsA.set_xlim(0, 10); gsA.set_ylim(0, 10)
-axB = fig.add_axes([0.715, 0.20, 0.275, 0.70])
+gsA = fig.add_axes([0.015, 0.02, 0.55, 0.96]); gsA.axis('off'); gsA.set_xlim(0, 10); gsA.set_ylim(0, 10)
+axB = fig.add_axes([0.655, 0.22, 0.335, 0.66])
 
 BLUE, GREEN, ORANGE, GREY, RED = '#2c6fb5', '#2e9e6b', '#e08a2b', '#8a8f98', '#c0392b'
 
@@ -46,7 +46,7 @@ gsA.text(5.12, 8.42, 'hard constraints', ha='center', fontsize=6.8, style='itali
 gsA.text(5.12, 7.35, 'per-peak option set\ntruth never excluded\n(100% envelope)',
          ha='center', va='center', fontsize=6.6, color='#1a1a1a')
 arrow(gsA, 5.12, 6.3, 5.12, 5.2)
-gsA.text(5.35, 5.72, 'pruned domains\n(mostly 1–3 candidates)', ha='left', va='center', fontsize=6.0, color=GREY)
+gsA.text(4.95, 5.75, 'pruned domains\n(mostly 1–3 candidates)', ha='right', va='center', fontsize=6.0, color=GREY)
 # MAGIC layer
 rect(gsA, 3.55, 2.35, 3.15, 2.85, '#fdf0e2', ORANGE)
 gsA.text(5.12, 4.82, 'MAGIC-style scoring', ha='center', fontsize=7.8, weight='bold', color=ORANGE)
@@ -60,27 +60,43 @@ tierbox(gsA, 7.55, 3.30, 2.25, 1.05, 'scored', 'NOE-ranked', '#fdf0e2', ORANGE, 
 tierbox(gsA, 7.55, 1.65, 2.25, 1.05, 'ambiguous', 'true symmetry', '#f3f4f6', GREY, '#555')
 arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6.75, 3.3, 7.5, 2.2)
 
-# --- Panel B: MBP benchmark (same intensity NOESY) ---
-labels = ['MAGIC', 'MAUS', 'magic\nmaus', 'magicmaus\n+soft']
-acc = [5.7, 26.6, 72.9, 79.7]
-cols = [RED, GREEN, BLUE, BLUE]
-env = [None, 100, 100, 100]
-x = range(len(labels))
-axB.bar(x, acc, color=cols, width=0.66, zorder=3)
-for i, v in enumerate(acc):
-  axB.text(i, v + 2.5, f'{v:.1f}', ha='center', fontsize=7, weight='bold', color=cols[i])
-# envelope markers
-axB.axhline(100, ls=':', lw=1.0, color='#999', zorder=1)
-axB.text(len(labels) - 0.5, 101.5, 'truth-in-envelope = 100%', ha='right', fontsize=6.0, color='#666')
-for i, e in enumerate(env):
-  if e:
-    axB.plot(i, 100, marker='v', ms=5, color='#2e9e6b', zorder=4)
-axB.text(1, 22, 'decisive\nonly', ha='center', va='top', fontsize=5.8, color='#555')
-axB.set_ylim(0, 112); axB.set_xticks(list(x)); axB.set_xticklabels(labels, fontsize=6.6)
-axB.set_ylabel('methyl-level correct (%)', fontsize=7.2)
-axB.set_title('B   MBP, 192 methyls (same intensity NOESY)', fontsize=7.6, weight='bold', loc='left')
+# --- Panel B: seven-target benchmark (same intensity NOESY) ---
+# (target, methyls, MAGIC%, magicmaus+soft%, MAGIC-converged)
+DATA = [
+  ('Ubq', 43, 9.3, 90.7, True),
+  ('HNH', 57, 12.3, 57.9, True),
+  ('IL-2', 59, 8.5, 89.8, True),
+  ('REC2', 63, None, 76.2, False),
+  ('REC3', 85, None, 28.2, False),
+  ('MBP', 192, 5.7, 79.7, True),
+  ('MSG', 257, None, 33.5, False),
+]
+x = range(len(DATA))
+w = 0.38
+for i, (_lab, _n, mg, mm, conv) in enumerate(DATA):
+  axB.bar(i - w / 2, mm, width=w, color=BLUE, zorder=3)
+  if conv:
+    axB.bar(i + w / 2, mg, width=w, color=RED, zorder=3)
+  else:
+    axB.bar(i + w / 2, 4.0, width=w, color='none', edgecolor=RED, hatch='///', lw=0.6, zorder=3)
+    axB.text(i + w / 2, 5.5, 'n.c.', ha='center', fontsize=5.0, color=RED, rotation=90, va='bottom')
+  axB.plot(i - w / 2, 100, marker='v', ms=4, color=GREEN, zorder=4)
+axB.axhline(100, ls=':', lw=0.9, color='#999', zorder=1)
+# 'envelope = 100%' below the line on the left, clear of the markers on the line
+axB.text(-0.4, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
+axB.set_ylim(0, 116); axB.set_xlim(-0.6, len(DATA) - 0.4)
+axB.set_xticks(list(x))
+axB.set_xticklabels([f'{lab}\n{n}' for (lab, n, *_ ) in DATA], fontsize=5.6)
+axB.set_ylabel('methyl-level correct (%)', fontsize=7.0)
 axB.spines[['top', 'right']].set_visible(False)
-axB.tick_params(labelsize=6.6)
+axB.tick_params(labelsize=6.2)
+# 'B' label and legend on a clear top band, well above the axes (no title collision)
+axB.text(-0.6, 128, 'B', fontsize=13, weight='bold', va='center')
+axB.bar(-9, 0, color=BLUE, label='magicmaus +soft')
+axB.bar(-9, 0, color=RED, label='MAGIC')
+axB.legend(loc='lower right', fontsize=5.8, frameon=False, ncol=1,
+           bbox_to_anchor=(1.02, 1.01), handlelength=1.0, labelspacing=0.3,
+           borderaxespad=0.0)
 
 fig.savefig('figure1.png', dpi=300, bbox_inches='tight', facecolor='white')
 print('wrote figure1.png')

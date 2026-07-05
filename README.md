@@ -225,7 +225,10 @@ deposition (see [`examples/*/README.md`](examples/)); `bench.py` scores MAUS and
 magicmaus, `convert_to_magic.py` adds MAGIC. Beyond MBP we ship ubiquitin (the
 reference protein of biomolecular NMR, where magicmaus assigns all 43 methyls
 correctly) and the four de-novo blind targets of the MAUS paper (Nerli *et al.*
-2021, Table 1): interleukin-2 and the HNH, REC2 and REC3 domains of Cas9.
+2021, Table 1): interleukin-2 and the HNH, REC2 and REC3 domains of Cas9. The
+suite also includes **malate synthase G** (257 methyls) — the classic large-protein
+methyl benchmark — built from the open-access MethylFLYA supplement (no BMRB
+methyl deposit) via `make_peaklists.py --shifts-tsv`.
 
 | target | BMRB / PDB | methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | envelope |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
@@ -235,6 +238,7 @@ correctly) and the four de-novo blind targets of the MAUS paper (Nerli *et al.*
 | REC2 | 28105 / 4CMP | 63 | n.c. | 12.7 % | 74.6 % | 76.2 % | 82.5 % | **100 %** |
 | REC3 | 28110 / 4ZT0 | 85 | n.c. | 8.2 % | 32.9 % | 28.2 % | 45.9 % | **100 %** |
 | MBP  | 7114 / 1ANF  | 192 | 5.7 % | 26.6 % | 72.9 % | 79.7 % | 89.1 % | **100 %** |
+| MSG  | SI / 1D8C    | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
 
 MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
 the rest — its coverage is the envelope column. The **100 % envelope holds on
@@ -270,6 +274,7 @@ score_three.py           MAGIC vs MAUS vs magicmaus on the MBP intensity NOESY
 examples/mbp/            MBP dataset (BMRB 7114 shifts + PDB 1ANF)
 examples/ubq/            ubiquitin (BMRB 6457 + PDB 1UBQ), the NMR reference protein
 examples/{il2,hnh,rec2,rec3}/   MAUS-paper blind targets (BMRB + PDB)
+examples/msg/            malate synthase G (MethylFLYA SI shifts + PDB 1D8C), 257 methyls
 ```
 
 Each `examples/<target>/` is self-contained: the PDB, the BMRB deposition
