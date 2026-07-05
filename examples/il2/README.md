@@ -15,7 +15,8 @@ intensities), re-matched to HMQC peaks by frequency at run time.
 
 Everything to reproduce this target lives in this directory: the PDB, the BMRB
 deposition (`bmr28104.str`), the generated peak lists, the committed magicmaus
-output (`magicmaus_calls.tsv`: per-peak call, confidence tier, option set, truth),
+output (`magicmaus_calls.tsv` for the +soft protocol, `magicmaus_calls_hmbc.tsv`
+with the optional HMBC lever: per-peak call, confidence tier, option set, truth),
 and the MAGIC assignment output (`magic_assignments.tsv`) where MAGIC converged.
 
 Regenerate the peak lists:
@@ -49,6 +50,8 @@ resolves Leu/Val geminal pairs and raises accuracy further (not part of the tabl
 | MAGIC (scoring) | 8.5% | — |
 | magicmaus | 88.1% | 100.0% |
 | magicmaus +soft-ambiguous | 89.8% | 100.0% |
+| magicmaus +soft +HMBC | 89.8% | 100.0% |
 
 magicmaus commits a single call for all 59 peaks while preserving the MAUS
-never-exclude envelope (100.0%). Soft ambiguous evidence helps here.
+never-exclude envelope (100.0%). Soft ambiguous evidence helps here. Adding the optional HMBC geminal-link
+experiment (`--hmbc`) on top of +soft reaches 89.8%.

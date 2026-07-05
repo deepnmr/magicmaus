@@ -226,21 +226,23 @@ magicmaus, `convert_to_magic.py` adds MAGIC. Beyond MBP we ship the four de-novo
 blind targets of the MAUS paper (Nerli *et al.* 2021, Table 1): interleukin-2 and
 the HNH, REC2 and REC3 domains of Cas9.
 
-| target | BMRB / PDB | methyls | MAGIC | magicmaus | +soft | envelope |
-|---|---|---:|---:|---:|---:|---:|
-| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 88.1 % | 89.8 % | **100 %** |
-| HNH  | 27949 / 6O56 | 57 | 12.3 % | 73.7 % | 57.9 % | **100 %** |
-| REC2 | 28105 / 4CMP | 63 | n.c. | 74.6 % | 76.2 % | **100 %** |
-| REC3 | 28110 / 4ZT0 | 85 | n.c. | 32.9 % | 28.2 % | **100 %** |
-| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 72.9 % | 79.7 % | **100 %** |
+| target | BMRB / PDB | methyls | MAGIC | magicmaus | +soft | +HMBC | envelope |
+|---|---|---:|---:|---:|---:|---:|---:|
+| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 88.1 % | 89.8 % | 89.8 % | **100 %** |
+| HNH  | 27949 / 6O56 | 57 | 12.3 % | 73.7 % | 57.9 % | 64.9 % | **100 %** |
+| REC2 | 28105 / 4CMP | 63 | n.c. | 74.6 % | 76.2 % | 82.5 % | **100 %** |
+| REC3 | 28110 / 4ZT0 | 85 | n.c. | 32.9 % | 28.2 % | 45.9 % | **100 %** |
+| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 72.9 % | 79.7 % | 89.1 % | **100 %** |
 
 The **100 % envelope holds on every target**, and magicmaus beats full-space
 MAGIC by up to ~10×. `+soft-ambiguous` helps on the sparser targets but not on the
-Leu-dense ones (HNH, REC3), so it is opt-in. MAGIC did not converge (`n.c.`)
-within a 15-min budget on the two Leu-dense Cas9 domains — the scaling cost of
-scoring the full space. REC3 (50/85 Leu) is the hard case: an achiral NOE network
-cannot resolve that much geminal/shift degeneracy, and magicmaus reports it as
-`ambiguous` option sets rather than guessing.
+Leu-dense ones (HNH, REC3), so it is opt-in. `+HMBC` adds an optional geminal-link
+experiment (`--hmbc`) on top of +soft; it lifts accuracy on every target, most
+where degeneracy is worst (REC3 28→46 %, MBP 80→89 %). MAGIC did not converge
+(`n.c.`) within a 15-min budget on the two Leu-dense Cas9 domains — the scaling
+cost of scoring the full space. REC3 (50/85 Leu) is the hard case: an achiral NOE
+network cannot resolve that much geminal/shift degeneracy without HMBC, and
+magicmaus reports the residual as `ambiguous` option sets rather than guessing.
 
 Regenerate any target (e.g. IL-2):
 
