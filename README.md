@@ -143,11 +143,11 @@ magicmaus single call    = 121/192 = 63.0% correct
 |---|---|---|---|
 | **MAGIC** alone | 15.1 % | — (no envelope) | commits to all, 84.9 % error, ~279 s |
 | **MAUS** alone  | 51/192 decisive, rest abstain | **100 %** | never wrong, but no call on degeneracy |
-| **magicmaus**   | **63.0 %** | **100 %** | commits on all 192 *and* keeps the envelope, ~0.6 s |
+| **magicmaus**   | **63.0 %** | **100 %** | commits on all 192 *and* keeps the envelope, ~0.26 s |
 
 magicmaus turns MAUS's 141 abstentions into 70 additional committed correct
 calls **without giving up the 100 % never-exclude guarantee**, and it multiplies
-MAGIC's single-answer accuracy 4× (15 % → 63 %) at ~400× the speed — because the
+MAGIC's single-answer accuracy 4× (15 % → 63 %) at ~1000× the speed — because the
 scored search runs only over the truth-containing MAUS domains.
 
 ### Levers

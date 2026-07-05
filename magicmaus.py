@@ -57,7 +57,9 @@ from typing import Dict, List, Tuple
 
 # Reuse the MAUS clean-room implementation verbatim (structure/peak parsing, the
 # SAT encoding, and the NOE matching) so the hard-constraint layer is identical.
-_MAUS_DIR = Path(__file__).resolve().parent.parent / 'maus'
+# The vendored copy lives next to this file (kept == ../maus/maus.py); importing
+# it locally makes the repo self-contained and picks up its speed optimisations.
+_MAUS_DIR = Path(__file__).resolve().parent
 if str(_MAUS_DIR) not in sys.path:
   sys.path.insert(0, str(_MAUS_DIR))
 

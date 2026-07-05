@@ -31,10 +31,12 @@ import argparse
 import math
 import re
 from dataclasses import dataclass
+from collections import deque
 from itertools import combinations
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from pysat.card import CardEnc, EncType
 from pysat.solvers import Glucose3
 
 
@@ -237,64 +239,114 @@ class MAUS:
     for m in methyls:
       self.sites_by_type.setdefault(m.res_type, []).append(m.index)
     idx_by_label = {m.label: m.index for m in methyls}
-    # SAT variable ids: x[(peak_i, methyl_g)]
-    self.var: Dict[Tuple[int, int], int] = {}
+    # Initial domains: methyls of the peak's type (or a tentative pin).
     self.domain: Dict[int, List[int]] = {}
     self.n_tentative = 0
-    nid = 1
     for p in peaks:
       dom = self.sites_by_type.get(p.res_type, [])
-      # tentative assignment pins the domain to the named methyl (if it exists
-      # and is of the right type); otherwise it is ignored (falls back to type).
       if p.tentative and idx_by_label.get(p.tentative) in dom:
         dom = [idx_by_label[p.tentative]]
         self.n_tentative += 1
-      self.domain[p.index] = dom
-      for g in dom:
+      self.domain[p.index] = list(dom)
+
+    # Arc-consistency prune on the firm NOE / HMBC constraints before the
+    # expensive per-candidate SAT: a methyl with no allowed structural partner in
+    # a NOE-linked peak's domain cannot be in ANY satisfying assignment, so
+    # dropping it is exact (the SAT would return UNSAT for it anyway) and keeps
+    # the never-exclude guarantee (the true assignment is globally consistent, so
+    # every arc has support). On MSG this collapses the candidate space that the
+    # SAT would otherwise probe one dead methyl at a time.
+    self._prune_domains()
+
+    # SAT variable ids over the pruned domains.
+    self.var: Dict[Tuple[int, int], int] = {}
+    nid = 1
+    for p in peaks:
+      for g in self.domain[p.index]:
         self.var[(p.index, g)] = nid
         nid += 1
     self.n_vars = nid - 1
 
+  def _prune_domains(self) -> None:
+    allowed = self.gem | self.short_g | self.long_g
+    nbr: Dict[int, List[Tuple[int, frozenset]]] = {}
+    for (i, j) in self.noe_edges:
+      nbr.setdefault(i, []).append((j, allowed)); nbr.setdefault(j, []).append((i, allowed))
+    for (i, j) in self.gem_links:
+      nbr.setdefault(i, []).append((j, self.gem)); nbr.setdefault(j, []).append((i, self.gem))
+    dom = {pi: set(d) for pi, d in self.domain.items()}
+    queue = deque((x, y, al) for x, arcs in nbr.items() for (y, al) in arcs)
+    while queue:
+      x, y, al = queue.popleft()
+      dy = dom[y]
+      dropped = [gx for gx in dom[x]
+                 if not any(gy != gx and (gx, gy) in al for gy in dy)]
+      if dropped:
+        dom[x].difference_update(dropped)
+        for (z, al2) in nbr.get(x, ()):
+          if z != y:
+            queue.append((z, x, al2))
+    for pi in self.domain:
+      self.domain[pi] = [g for g in self.domain[pi] if g in dom[pi]]
+
+  def _amo(self, clauses: List[List[int]], lits: List[int]) -> None:
+    """At-most-one over `lits`. Pairwise C(d,2) binaries for small domains;
+    a sequential-counter encoding (O(d) clauses + O(d) aux vars) for large ones,
+    so a d=133 Leu domain costs ~130 clauses instead of ~8800. Aux vars live
+    above the x-vars and are ignored by model harvesting (not in `owner`)."""
+    if len(lits) <= 1:
+      return
+    if len(lits) <= 8:
+      for a, b in combinations(lits, 2):
+        clauses.append([-a, -b])
+      return
+    enc = CardEnc.atmost(lits=lits, bound=1, top_id=self._top,
+                         encoding=EncType.seqcounter)
+    clauses.extend(enc.clauses)
+    if enc.nv > self._top:
+      self._top = enc.nv
+
   def _base_clauses(self) -> List[List[int]]:
     clauses: List[List[int]] = []
+    self._top = self.n_vars           # running max var id (aux vars go above)
     # (1) each peak assigned to exactly one methyl of its type
     for p in self.peaks:
       lits = [self.var[(p.index, g)] for g in self.domain[p.index]]
       if not lits:
         continue
       clauses.append(lits)                                  # at least one
-      for a, b in combinations(lits, 2):
-        clauses.append([-a, -b])                            # at most one
+      self._amo(clauses, lits)                              # at most one
     # (2) each methyl used by at most one peak
     peaks_of: Dict[int, List[int]] = {}
     for p in self.peaks:
       for g in self.domain[p.index]:
         peaks_of.setdefault(g, []).append(self.var[(p.index, g)])
     for g, lits in peaks_of.items():
-      for a, b in combinations(lits, 2):
-        clauses.append([-a, -b])
+      self._amo(clauses, lits)
     # (3) every firm NOE edge must map onto a structure edge within long_cut
     #     (single mixing class: geminal / short / long all acceptable).
+    # Support encoding: i->gi forces j onto an allowed partner. Since (1) pins
+    # each peak to exactly one methyl, one such clause per (i,gi) is equivalent
+    # to the O(d^2) forbidden-pair binaries but O(d) in size (712k -> ~19k on MBP).
     allowed = self.gem | self.short_g | self.long_g
     for (i, j) in self.noe_edges:
-      di, dj = self.domain[i], self.domain[j]
-      for gi in di:
-        for gj in dj:
-          if gi == gj:
-            continue
-          if (gi, gj) not in allowed:
-            clauses.append([-self.var[(i, gi)], -self.var[(j, gj)]])
+      self._support(clauses, i, j, allowed)
     # (4) optional HMBC geminal links: the two linked peaks must map to the two
     #     geminal methyls of one residue -> only geminal G-edges allowed.
     for (i, j) in self.gem_links:
-      di, dj = self.domain[i], self.domain[j]
-      for gi in di:
-        for gj in dj:
-          if gi == gj:
-            continue
-          if (gi, gj) not in self.gem:
-            clauses.append([-self.var[(i, gi)], -self.var[(j, gj)]])
+      self._support(clauses, i, j, self.gem)
     return clauses
+
+  def _support(self, clauses, i, j, allowed):
+    """i->gi implies j maps to an allowed partner (both directions, so the
+    constraint holds whichever endpoint the solver fixes first)."""
+    di, dj = self.domain[i], self.domain[j]
+    for gi in di:
+      clauses.append([-self.var[(i, gi)]] +
+                     [self.var[(j, gj)] for gj in dj if gj != gi and (gi, gj) in allowed])
+    for gj in dj:
+      clauses.append([-self.var[(j, gj)]] +
+                     [self.var[(i, gi)] for gi in di if gi != gj and (gi, gj) in allowed])
 
   def solve_options(self) -> Dict[int, List[int]]:
     # Build the CNF once; enumerate per-peak valid methyls incrementally with
