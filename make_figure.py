@@ -11,6 +11,7 @@ gsA = fig.add_axes([0.015, 0.02, 0.55, 0.96]); gsA.axis('off'); gsA.set_xlim(0, 
 axB = fig.add_axes([0.655, 0.22, 0.335, 0.66])
 
 BLUE, GREEN, ORANGE, GREY, RED = '#2c6fb5', '#2e9e6b', '#e08a2b', '#8a8f98', '#c0392b'
+PURPLE = '#7d5ba6'
 
 
 def rect(ax, x, y, w, h, fc, ec):
@@ -61,29 +62,30 @@ tierbox(gsA, 7.55, 1.65, 2.25, 1.05, 'ambiguous', 'true symmetry', '#f3f4f6', GR
 arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6.75, 3.3, 7.5, 2.2)
 
 # --- Panel B: seven-target benchmark (same intensity NOESY) ---
-# (target, methyls, MAGIC%, magicmaus+soft%, MAGIC-converged)
+# (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged)
 DATA = [
-  ('Ubq', 43, 9.3, 90.7, True),
-  ('HNH', 57, 12.3, 57.9, True),
-  ('IL-2', 59, 8.5, 89.8, True),
-  ('REC2', 63, None, 76.2, False),
-  ('REC3', 85, None, 28.2, False),
-  ('MBP', 192, 5.7, 79.7, True),
-  ('MSG', 257, None, 33.5, False),
+  ('Ubq', 43, 9.3, 34.9, 90.7, True),
+  ('HNH', 57, 12.3, 26.3, 57.9, True),
+  ('IL-2', 59, 8.5, 8.5, 89.8, True),
+  ('REC2', 63, None, 12.7, 76.2, False),
+  ('REC3', 85, None, 8.2, 28.2, False),
+  ('MBP', 192, 5.7, 26.6, 79.7, True),
+  ('MSG', 257, None, 1.6, 33.5, False),
 ]
 x = range(len(DATA))
-w = 0.38
-for i, (_lab, _n, mg, mm, conv) in enumerate(DATA):
-  axB.bar(i - w / 2, mm, width=w, color=BLUE, zorder=3)
+w = 0.26
+for i, (_lab, _n, mg, ma, mm, conv) in enumerate(DATA):
+  axB.bar(i - w, mm, width=w, color=BLUE, zorder=3)
+  axB.bar(i, ma, width=w, color=PURPLE, zorder=3)
   if conv:
-    axB.bar(i + w / 2, mg, width=w, color=RED, zorder=3)
+    axB.bar(i + w, mg, width=w, color=RED, zorder=3)
   else:
-    axB.bar(i + w / 2, 4.0, width=w, color='none', edgecolor=RED, hatch='///', lw=0.6, zorder=3)
-    axB.text(i + w / 2, 5.5, 'n.c.', ha='center', fontsize=5.0, color=RED, rotation=90, va='bottom')
-  axB.plot(i - w / 2, 100, marker='v', ms=4, color=GREEN, zorder=4)
+    axB.bar(i + w, 4.0, width=w, color='none', edgecolor=RED, hatch='///', lw=0.6, zorder=3)
+    axB.text(i + w, 5.5, 'n.c.', ha='center', fontsize=5.0, color=RED, rotation=90, va='bottom')
+  axB.plot(i, 100, marker='v', ms=4, color=GREEN, zorder=4)
 axB.axhline(100, ls=':', lw=0.9, color='#999', zorder=1)
 # 'envelope = 100%' below the line on the left, clear of the markers on the line
-axB.text(-0.4, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
+axB.text(-0.55, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
 axB.set_ylim(0, 116); axB.set_xlim(-0.6, len(DATA) - 0.4)
 axB.set_xticks(list(x))
 axB.set_xticklabels([f'{lab}\n{n}' for (lab, n, *_ ) in DATA], fontsize=5.6)
@@ -93,10 +95,11 @@ axB.tick_params(labelsize=6.2)
 # 'B' label and legend on a clear top band, well above the axes (no title collision)
 axB.text(-0.6, 128, 'B', fontsize=13, weight='bold', va='center')
 axB.bar(-9, 0, color=BLUE, label='magicmaus +soft')
+axB.bar(-9, 0, color=PURPLE, label='MAUS (unique)')
 axB.bar(-9, 0, color=RED, label='MAGIC')
-axB.legend(loc='lower right', fontsize=5.8, frameon=False, ncol=1,
-           bbox_to_anchor=(1.02, 1.01), handlelength=1.0, labelspacing=0.3,
-           borderaxespad=0.0)
+axB.legend(loc='lower right', fontsize=5.8, frameon=False, ncol=3,
+           bbox_to_anchor=(1.03, 1.005), handlelength=1.0, columnspacing=1.0,
+           handletextpad=0.4, borderaxespad=0.0)
 
 fig.savefig('figure1.png', dpi=300, bbox_inches='tight', facecolor='white')
 print('wrote figure1.png')
