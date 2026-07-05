@@ -46,7 +46,7 @@ gsA.text(5.12, 8.42, 'hard constraints', ha='center', fontsize=6.8, style='itali
 gsA.text(5.12, 7.35, 'per-peak option set\ntruth never excluded\n(100% envelope)',
          ha='center', va='center', fontsize=6.6, color='#1a1a1a')
 arrow(gsA, 5.12, 6.3, 5.12, 5.2)
-gsA.text(5.35, 5.72, 'pruned domains\n(mostly 1–3 candidates)', ha='left', va='center', fontsize=6.0, color=GREY)
+gsA.text(4.95, 5.75, 'pruned domains\n(mostly 1–3 candidates)', ha='right', va='center', fontsize=6.0, color=GREY)
 # MAGIC layer
 rect(gsA, 3.55, 2.35, 3.15, 2.85, '#fdf0e2', ORANGE)
 gsA.text(5.12, 4.82, 'MAGIC-style scoring', ha='center', fontsize=7.8, weight='bold', color=ORANGE)
