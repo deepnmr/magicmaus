@@ -47,6 +47,7 @@ resolves Leu/Val geminal pairs and raises accuracy further (not part of the tabl
 | engine | methyl-level correct | truth-in-envelope |
 |---|---|---|
 | MAGIC (scoring) | did not converge (>15 min) | — |
+| MAUS (unique only, rest abstain) | 8.2% | 100.0% |
 | magicmaus | 32.9% | 100.0% |
 | magicmaus +soft-ambiguous | 28.2% | 100.0% |
 | magicmaus +soft +HMBC | 45.9% | 100.0% |

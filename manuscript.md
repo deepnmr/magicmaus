@@ -162,16 +162,18 @@ same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
 contains the truth (never-exclude guarantee). n.c. = did not converge within a
 15-min budget.
 
-| Target | BMRB / PDB | Methyls | MAGIC | magicmaus | +soft | +HMBC | Envelope |
-|---|---|---:|---:|---:|---:|---:|---:|
-| IL-2 | 28104 / 1M47 | 59 | 8.5% | 88.1% | 89.8% | 89.8% | 100% |
-| HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 73.7% | 57.9% | 64.9% | 100% |
-| REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 74.6% | 76.2% | 82.5% | 100% |
-| REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 32.9% | 28.2% | 45.9% | 100% |
-| MBP | 7114 / 1ANF | 192 | 5.7% | 72.9% | 79.7% | 89.1% | 100% |
+| Target | BMRB / PDB | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| IL-2 | 28104 / 1M47 | 59 | 8.5% | 8.5% | 88.1% | 89.8% | 89.8% | 100% |
+| HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 26.3% | 73.7% | 57.9% | 64.9% | 100% |
+| REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 74.6% | 76.2% | 82.5% | 100% |
+| REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 8.2% | 32.9% | 28.2% | 45.9% | 100% |
+| MBP | 7114 / 1ANF | 192 | 5.7% | 26.6% | 72.9% | 79.7% | 89.1% | 100% |
 
-The +HMBC column adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on
-top of +soft, forcing each Leu/Val geminal pair onto its two structural methyls.
+The MAUS column is the fraction of peaks it commits uniquely (all correct); on the
+rest it abstains, so its coverage is the Envelope column (100%). The +HMBC column
+adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft,
+forcing each Leu/Val geminal pair onto its two structural methyls.
 
 ## 4 Conclusion
 
