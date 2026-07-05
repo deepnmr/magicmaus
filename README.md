@@ -222,12 +222,14 @@ commit correctly within it. Neither half delivers this alone.
 
 MBP is not a one-off. `make_peaklists.py` builds a dataset from any PDB + BMRB
 deposition (see [`examples/*/README.md`](examples/)); `bench.py` scores MAUS and
-magicmaus, `convert_to_magic.py` adds MAGIC. Beyond MBP we ship the four de-novo
-blind targets of the MAUS paper (Nerli *et al.* 2021, Table 1): interleukin-2 and
-the HNH, REC2 and REC3 domains of Cas9.
+magicmaus, `convert_to_magic.py` adds MAGIC. Beyond MBP we ship ubiquitin (the
+reference protein of biomolecular NMR, where magicmaus assigns all 43 methyls
+correctly) and the four de-novo blind targets of the MAUS paper (Nerli *et al.*
+2021, Table 1): interleukin-2 and the HNH, REC2 and REC3 domains of Cas9.
 
 | target | BMRB / PDB | methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | envelope |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
+| Ubiquitin | 6457 / 1UBQ | 43 | 9.3 % | 34.9 % | **100 %** | 90.7 % | 90.7 % | **100 %** |
 | IL-2 | 28104 / 1M47 | 59 | 8.5 % | 8.5 % | 88.1 % | 89.8 % | 89.8 % | **100 %** |
 | HNH  | 27949 / 6O56 | 57 | 12.3 % | 26.3 % | 73.7 % | 57.9 % | 64.9 % | **100 %** |
 | REC2 | 28105 / 4CMP | 63 | n.c. | 12.7 % | 74.6 % | 76.2 % | 82.5 % | **100 %** |
@@ -266,6 +268,7 @@ convert_to_magic.py      re-emit a dataset as a MAGIC control bundle (fair compa
 bench.py                 MAUS + magicmaus (+MAGIC) on one example dir
 score_three.py           MAGIC vs MAUS vs magicmaus on the MBP intensity NOESY
 examples/mbp/            MBP dataset (BMRB 7114 shifts + PDB 1ANF)
+examples/ubq/            ubiquitin (BMRB 6457 + PDB 1UBQ), the NMR reference protein
 examples/{il2,hnh,rec2,rec3}/   MAUS-paper blind targets (BMRB + PDB)
 ```
 

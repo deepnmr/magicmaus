@@ -28,9 +28,9 @@ objective and is frequently wrong. We present **magicmaus**, a hybrid that uses
 the satisfiability layer to bound the search to a certifiably truth-containing
 set of per-peak candidates, then applies an intensity-weighted NOE score *within*
 those bounds to commit to a single, globally coherent, injective assignment
-carrying a per-peak confidence tier. Across five benchmark targets (57–192
+carrying a per-peak confidence tier. Across six benchmark targets (43–192
 methyls) built from real BMRB shifts and structures, magicmaus commits a single
-answer for every peak at 33–90% methyl-level accuracy — up to an order of
+answer for every peak at 33–100% methyl-level accuracy — up to an order of
 magnitude above the scoring method — while retaining the constraint method's
 100% never-exclude guarantee as an explicit ambiguity envelope. On
 maltose-binding protein (192 methyls) it assigns 72.9% of methyls correctly
@@ -125,10 +125,11 @@ three methyl protons, and each observed methyl becomes an anonymous HMQC peak
 Because BMRB deposits no NOESY peak list, a 3D (H)CCH network is simulated from
 the structure (a cross peak for every methyl pair within 7.9 Å, both directions)
 with 1/r^6^ intensities; the identical network is supplied to all three engines.
-We benchmark five targets: *E. coli* maltose-binding protein (MBP; BMRB 7114, PDB
+We benchmark six targets: ubiquitin (BMRB 6457, PDB 1UBQ; the reference protein
+of biomolecular NMR), *E. coli* maltose-binding protein (MBP; BMRB 7114, PDB
 1ANF; Ulrich *et al.*, 2008; Spurlino *et al.*, 1991; 192 methyls) and the four
 de-novo blind targets of the MAUS study (Nerli *et al.*, 2021) — interleukin-2
-and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — spanning 57–192
+and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — spanning 43–192
 observed methyls (Table 1).
 
 **Results.** MAGIC, scoring over the full type-matched space, assigned 6–12% of
@@ -140,9 +141,9 @@ full-space scoring; on the two Leu-dense Cas9 domains it did not return within a
 in the option set for 100% of peaks on every target; its result was unchanged by
 the intensity column, as its boolean constraints cannot use it. magicmaus
 committed a single answer for every peak while preserving that **100%**
-never-exclude envelope throughout, at **73–90%** methyl-level accuracy on the four
-smaller targets and **72.9%** on MBP — up to an order of magnitude above scoring
-over the full space. The one hard case is REC3, the largest and most degenerate
+never-exclude envelope throughout, at **73–100%** methyl-level accuracy on the
+smaller targets (a perfect 43/43 on ubiquitin) and **72.9%** on MBP — up to an
+order of magnitude above scoring over the full space. The one hard case is REC3, the largest and most degenerate
 (50 of 85 methyls are Leu), at 32.9%: an achiral NOE network leaves many geminal
 pairs and shift-degenerate peaks genuinely unresolvable, which magicmaus flags as
 `ambiguous` and reports as full option sets rather than guessing. Folding the
@@ -164,6 +165,7 @@ contains the truth (never-exclude guarantee). n.c. = did not converge within a
 
 | Target | BMRB / PDB | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
+| Ubiquitin | 6457 / 1UBQ | 43 | 9.3% | 34.9% | 100% | 90.7% | 90.7% | 100% |
 | IL-2 | 28104 / 1M47 | 59 | 8.5% | 8.5% | 88.1% | 89.8% | 89.8% | 100% |
 | HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 26.3% | 73.7% | 57.9% | 64.9% | 100% |
 | REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 74.6% | 76.2% | 82.5% | 100% |
