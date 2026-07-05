@@ -226,15 +226,17 @@ magicmaus, `convert_to_magic.py` adds MAGIC. Beyond MBP we ship the four de-novo
 blind targets of the MAUS paper (Nerli *et al.* 2021, Table 1): interleukin-2 and
 the HNH, REC2 and REC3 domains of Cas9.
 
-| target | BMRB / PDB | methyls | MAGIC | magicmaus | +soft | +HMBC | envelope |
-|---|---|---:|---:|---:|---:|---:|---:|
-| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 88.1 % | 89.8 % | 89.8 % | **100 %** |
-| HNH  | 27949 / 6O56 | 57 | 12.3 % | 73.7 % | 57.9 % | 64.9 % | **100 %** |
-| REC2 | 28105 / 4CMP | 63 | n.c. | 74.6 % | 76.2 % | 82.5 % | **100 %** |
-| REC3 | 28110 / 4ZT0 | 85 | n.c. | 32.9 % | 28.2 % | 45.9 % | **100 %** |
-| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 72.9 % | 79.7 % | 89.1 % | **100 %** |
+| target | BMRB / PDB | methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | envelope |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 8.5 % | 88.1 % | 89.8 % | 89.8 % | **100 %** |
+| HNH  | 27949 / 6O56 | 57 | 12.3 % | 26.3 % | 73.7 % | 57.9 % | 64.9 % | **100 %** |
+| REC2 | 28105 / 4CMP | 63 | n.c. | 12.7 % | 74.6 % | 76.2 % | 82.5 % | **100 %** |
+| REC3 | 28110 / 4ZT0 | 85 | n.c. | 8.2 % | 32.9 % | 28.2 % | 45.9 % | **100 %** |
+| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 26.6 % | 72.9 % | 79.7 % | 89.1 % | **100 %** |
 
-The **100 % envelope holds on every target**, and magicmaus beats full-space
+MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
+the rest — its coverage is the envelope column. The **100 % envelope holds on
+every target**, and magicmaus beats full-space
 MAGIC by up to ~10×. `+soft-ambiguous` helps on the sparser targets but not on the
 Leu-dense ones (HNH, REC3), so it is opt-in. `+HMBC` adds an optional geminal-link
 experiment (`--hmbc`) on top of +soft; it lifts accuracy on every target, most
