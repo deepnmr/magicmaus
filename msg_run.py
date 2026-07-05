@@ -52,16 +52,15 @@ def main():
   # --- no-HMBC engine: one enumeration, reused for plain + soft ---
   eng = mm.MagicMaus(methyls, peaks, gem, sg, lg, noe, edge_intensity=ei)
   options = eng.option_sets()
-  free = [p.index for p in peaks if len(options[p.index]) > 1]
   unique = sum(1 for p in peaks if len(options[p.index]) == 1)
   unique_ok = sum(1 for p in peaks if len(options[p.index]) == 1
                   and lbi[options[p.index][0]] == truth.get(p.peak_id))
 
-  plain = eng._improve(eng._feasible_model(options), options, free)
+  plain = eng.optimize(options)
   p_meth, p_inset = score(plain, options)
 
   eng.set_soft_evidence(amb)
-  soft = eng._improve(eng._feasible_model(options), options, free)
+  soft = eng.optimize(options)
   s_meth, s_inset = score(soft, options)
   write_calls(f'{EX}/magicmaus_calls.tsv', soft, options)
 
@@ -69,9 +68,8 @@ def main():
   gem_links, _ = maus.match_hmbc(peaks, maus.load_hmbc(f'{EX}/hmbc.tsv'), 0.01, 0.05)
   engh = mm.MagicMaus(methyls, peaks, gem, sg, lg, noe, gem_links=gem_links, edge_intensity=ei)
   oh = engh.option_sets()
-  freeh = [p.index for p in peaks if len(oh[p.index]) > 1]
   engh.set_soft_evidence(amb)
-  hmbc = engh._improve(engh._feasible_model(oh), oh, freeh)
+  hmbc = engh.optimize(oh)
   h_meth, h_inset = score(hmbc, oh)
   write_calls(f'{EX}/magicmaus_calls_hmbc.tsv', hmbc, oh)
 

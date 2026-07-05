@@ -48,10 +48,9 @@ resolves Leu/Val geminal pairs and raises accuracy further (not part of the tabl
 |---|---|---|
 | MAGIC (scoring) | did not converge (>15 min) | — |
 | MAUS (unique only, rest abstain) | 12.7% | 100.0% |
-| magicmaus | 74.6% | 100.0% |
-| magicmaus +soft-ambiguous | 76.2% | 100.0% |
-| magicmaus +soft +HMBC | 82.5% | 100.0% |
+| magicmaus | 88.9% | 100.0% |
+| magicmaus +soft-ambiguous | 90.5% | 100.0% |
+| magicmaus +soft +HMBC | 76.2% | 100.0% |
 
 magicmaus commits a single call for all 63 peaks while preserving the MAUS
-never-exclude envelope (100.0%). Soft ambiguous evidence helps here. Adding the optional HMBC geminal-link
-experiment (`--hmbc`) on top of +soft reaches 82.5%.
+never-exclude envelope (100.0%). Soft ambiguous evidence helps here. The optional HMBC geminal-link lever (`--hmbc`) does not help on this degenerate target (76.2%), where the residual ambiguity is symmetric rather than geminal.

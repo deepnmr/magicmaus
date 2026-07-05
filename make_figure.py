@@ -52,7 +52,7 @@ gsA.text(4.95, 5.75, 'pruned domains\n(mostly 1–3 candidates)', ha='right', va
 rect(gsA, 3.55, 2.35, 3.15, 2.85, '#fdf0e2', ORANGE)
 gsA.text(5.12, 4.82, 'MAGIC-style scoring', ha='center', fontsize=7.8, weight='bold', color=ORANGE)
 gsA.text(5.12, 4.42, 'intensity · (1/r$^6$)', ha='center', fontsize=6.8, style='italic', color=ORANGE)
-gsA.text(5.12, 3.35, 'SAT-feasible seed +\ncoordinate ascent\n→ single coherent map',
+gsA.text(5.12, 3.35, 'SAT-feasible seed +\n3-cycle annealing\n→ single coherent map',
          ha='center', va='center', fontsize=6.6, color='#1a1a1a')
 # output tiers
 gsA.text(8.68, 6.35, 'single call + confidence', ha='center', fontsize=6.8, style='italic', color='#333')
@@ -64,13 +64,13 @@ arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6
 # --- Panel B: seven-target benchmark (same intensity NOESY) ---
 # (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged)
 DATA = [
-  ('Ubq', 43, 9.3, 34.9, 90.7, True),
-  ('HNH', 57, 12.3, 26.3, 57.9, True),
-  ('IL-2', 59, 8.5, 8.5, 89.8, True),
-  ('REC2', 63, None, 12.7, 76.2, False),
-  ('REC3', 85, None, 8.2, 28.2, False),
-  ('MBP', 192, 5.7, 26.6, 79.7, True),
-  ('MSG', 257, None, 1.6, 33.5, False),
+  ('Ubq', 43, 9.3, 34.9, 100.0, True),
+  ('HNH', 57, 12.3, 26.3, 86.0, True),
+  ('IL-2', 59, 8.5, 8.5, 96.6, True),
+  ('REC2', 63, None, 12.7, 90.5, False),
+  ('REC3', 85, None, 8.2, 57.6, False),
+  ('MBP', 192, 5.7, 26.6, 87.5, True),
+  ('MSG', 257, None, 1.6, 31.1, False),
 ]
 x = range(len(DATA))
 w = 0.26

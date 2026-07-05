@@ -338,20 +338,140 @@ class MagicMaus:
         break
     return assign
 
+  def _total_obj(self, assign: Dict[int, int]) -> float:
+    """Total NOE-contact objective (each firm edge counted once)."""
+    return 0.5 * sum(self._peak_energy(p.index, assign) for p in self.peaks)
+
+  def _anneal(self, assign, options, free, rng, iters, t0, t1):
+    """Simulated annealing on the NOE-contact objective over the pruned domains.
+
+    Three feasibility-preserving move classes are proposed at random and accepted
+    by the Metropolis rule against a geometric temperature schedule (t0->t1):
+
+      * relocate -- peak i takes a free option;
+      * swap     -- peaks i,j exchange their two methyls;
+      * 3-cycle  -- peaks i,j,k rotate methyls (i<-j<-k<-i).
+
+    The 3-cycle is the load-bearing move: a plain swap needs ``g_i in options[j]``
+    and stalls in the tightly coupled Leu/Val option graphs (single greedy ascent
+    then sits ~10-25% below the truth's objective).  Rotations reach the states
+    swaps cannot, so annealing climbs into the truth's basin, where the caller's
+    final greedy ascent locks it in.  Every accepted move is checked injective
+    and NOE-on-contact, so the map stays feasible throughout and the MAUS
+    envelope is intact.  Returns the (feasible) end-of-schedule assignment, which
+    the caller polishes with `_improve`.
+    """
+    if not free:
+      return dict(assign)
+    holder = {g: i for i, g in assign.items() if g is not None}
+    for it in range(iters):
+      t = t0 * (t1 / t0) ** (it / iters)
+      i = rng.choice(free)
+      gi = assign[i]
+      if rng.random() < 0.35:                    # 3-cycle rotation
+        alts = [b for b in options[i] if b != gi and b in holder]
+        if not alts:
+          continue
+        b = rng.choice(alts); j = holder[b]
+        if j == i:
+          continue
+        cs = [c for c in options[j] if c != b and c in holder and holder[c] not in (i, j)]
+        if not cs:
+          continue
+        c = rng.choice(cs); k = holder[c]
+        if gi not in options[k]:
+          continue
+        grp = (i, j, k)
+        before = sum(self._peak_energy(x, assign) for x in grp)
+        assign[i], assign[j], assign[k] = b, c, gi
+        ok = self._noe_ok(i, b, assign) and self._noe_ok(j, c, assign) and self._noe_ok(k, gi, assign)
+        after = sum(self._peak_energy(x, assign) for x in grp)
+        assign[i], assign[j], assign[k] = gi, b, c
+        if not ok:
+          continue
+        if after - before >= 0 or rng.random() < math.exp((after - before) / t):
+          assign[i], assign[j], assign[k] = b, c, gi
+          holder[b], holder[c], holder[gi] = i, j, k
+      else:                                       # relocate or swap
+        alts = [b for b in options[i] if b != gi]
+        if not alts:
+          continue
+        b = rng.choice(alts); j = holder.get(b)
+        if j is None:
+          if not self._noe_ok(i, b, assign):
+            continue
+          before = self._peak_energy(i, assign)
+          assign[i] = b; after = self._peak_energy(i, assign); assign[i] = gi
+          if after - before >= 0 or rng.random() < math.exp((after - before) / t):
+            del holder[gi]; assign[i] = b; holder[b] = i
+        else:
+          if gi not in options[j]:
+            continue
+          if not self._noe_ok(i, b, assign, skip=j) or not self._noe_ok(j, gi, assign, skip=i):
+            continue
+          before = self._peak_energy(i, assign) + self._peak_energy(j, assign)
+          assign[i], assign[j] = b, gi
+          after = self._peak_energy(i, assign) + self._peak_energy(j, assign)
+          assign[i], assign[j] = gi, b
+          if after - before >= 0 or rng.random() < math.exp((after - before) / t):
+            assign[i], assign[j] = b, gi; holder[b] = i; holder[gi] = j
+    return assign
+
   # -- layer 2: single globally-coherent assignment ------------------------
-  def solve(self):
+  def solve(self, restarts: int = 4, iters: int = None, seed: int = 0):
     """MAUS bounds the space; MAGIC-style scoring commits within it.
 
-    A feasible assignment over the pruned domains (SAT) seeds a
-    feasibility-preserving coordinate ascent on the NOE-contact objective.  The
-    result is a single injective, NOE-consistent map -- MAUS's option sets are
-    returned alongside as the never-exclude envelope.
+    A single greedy coordinate ascent from a SAT-feasible seed lands in the
+    nearest local optimum, which on the near-flat MAGIC landscape sits *below*
+    the truth (measured: the truth outscores it on 4/6 benchmark proteins, by up
+    to ~20%).  So each restart runs 3-cycle simulated annealing (`_anneal`) from
+    the seed and polishes the best state it visits with a final greedy ascent;
+    the highest-objective run over all restarts is committed.  Every start and
+    every move is feasibility-checked, so the committed map is injective and
+    NOE-consistent and the MAUS option sets are returned unchanged as the never-
+    exclude envelope -- annealing only climbs higher on the same objective.
     """
     options = self.option_sets()
+    return self.optimize(options, restarts=restarts, iters=iters, seed=seed), options
+
+  def optimize(self, options, restarts: int = 4, iters: int = None, seed: int = 0):
+    """Run the 3-cycle simulated-annealing search over pre-enumerated `options`.
+
+    Split out from `solve` so callers that already hold a MAUS enumeration (e.g.
+    MSG, where enumeration is the wall-clock bottleneck) can score it without
+    re-enumerating.  Seeds a SAT-feasible start, runs `restarts` independent
+    anneals each polished by a greedy ascent, and returns the highest-objective
+    feasible map.
+    """
+    import random
+    rng = random.Random(seed)
     free = [p.index for p in self.peaks if len(options[p.index]) > 1]
-    assign = self._feasible_model(options)
-    chosen = self._improve(assign, options, free)
-    return chosen, options
+    seed_assign = self._feasible_model(options)
+    best = self._improve(dict(seed_assign), options, free)
+    best_obj = self._total_obj(best)
+    # The annealer only *helps* when the objective actually tracks the truth,
+    # which needs real NOESY intensities: with observed I ~ 1/r^6 each edge is
+    # pinned to its true distance, so the objective's global max is the truth
+    # (verified: truth-seeded ascent scores ~96% on the intensity benchmarks).
+    # On a boolean network every firm edge weighs 1.0, so the objective rewards
+    # packing edges onto the densest structural contacts, not the truth -- there
+    # climbing harder *lowers* accuracy.  So gate the search on intensity signal:
+    # with none, keep the gentle single ascent that stays near the SAT seed.
+    ivals = list(self.edge_intensity.values())
+    mean_i = sum(ivals) / len(ivals) if ivals else 0.0
+    informative = mean_i > 0 and (max(ivals) - min(ivals)) > 1e-6 * mean_i
+    if not informative:
+      return best
+    if iters is None:
+      iters = max(60000, 800 * len(free))        # scale search to problem size
+    scale = best_obj / max(len(free), 1)         # per-peak energy sets the temperature
+    for _ in range(restarts):
+      cand = self._anneal(dict(seed_assign), options, free, rng, iters, scale * 2, scale * 0.01)
+      cand = self._improve(cand, options, free)
+      obj = self._total_obj(cand)
+      if obj > best_obj + 1e-12:
+        best, best_obj = cand, obj
+    return best
 
   # -- confidence: local scoring margin of the committed pick ----------------
   def confidence(self, peak_index: int, chosen: Dict[int, int], options) -> Tuple[str, float]:

@@ -108,13 +108,15 @@ truth key + structure), simulating a real experiment:
 | NOESY | single-answer correct | scored-tier correct |
 |---|---|---|
 | boolean                          | 63.0 % | 65.7 % |
-| + intensities                    | 72.9 % | 79.7 % |
-| + intensities `--soft-ambiguous` | **79.7 %** | **85.8 %** |
+| + intensities                    | 87.0 % | 92.3 % |
+| + intensities `--soft-ambiguous` | **87.5 %** | **92.6 %** |
 
 `--soft-ambiguous` folds in the ambiguous NOE cross peaks MAUS discards as extra,
-intensity-weighted tie-breakers. Intensities lift the run **63 % → 80 %** — and
+intensity-weighted tie-breakers. Intensities lift the run **63 % → 87 %** — and
 the envelope stays at **100 %** the whole way. The scoring layer, idle on boolean
-data, does real work once the data carry information.
+data, does real work once the data carry information: with the intensity column in
+hand the NOE objective's optimum is the truth, and magicmaus's 3-cycle annealer
+climbs to it (a plain greedy ascent stalls ~15 % short).
 
 ---
 
@@ -164,8 +166,8 @@ so all three engines are scored on the **same** shifts, structure and NOE peaks.
                             methyl-level     residue-level   truth-in-envelope
 MAGIC (scoring)           11/192 =  5.7%    20/192 = 10.4%     — (no envelope)
 MAUS (SAT)            unique 51/192 = 26.6%                      192/192 = 100.0%
-magicmaus                140/192 = 72.9%   152/192 = 79.2%    192/192 = 100.0%
-magicmaus +soft-amb      153/192 = 79.7%   164/192 = 85.4%    192/192 = 100.0%
+magicmaus                167/192 = 87.0%   173/192 = 90.1%    192/192 = 100.0%
+magicmaus +soft-amb      168/192 = 87.5%   172/192 = 89.6%    192/192 = 100.0%
 ```
 
 Two facts the shared network makes plain:
@@ -178,7 +180,7 @@ Two facts the shared network makes plain:
   residue-level answer that cannot even resolve geminal pairs.
 
 magicmaus runs the *same* intensity-weighted scoring MAGIC uses, but only inside
-MAUS's truth-containing domains — landing **13× MAGIC's methyl accuracy while
+MAUS's truth-containing domains — landing **15× MAGIC's methyl accuracy while
 keeping MAUS's 100 % envelope**. That is the synthesis: MAUS keeps the truth in
 reach, MAGIC's scoring extracts every bit of experimental signal to commit
 correctly within it. Neither half delivers this alone.
@@ -207,5 +209,5 @@ any PDB + BMRB deposition, so the four de-novo blind targets of the MAUS paper
 (IL-2 and the Cas9 HNH/REC2/REC3 domains) drop straight in — see
 [`../README.md#benchmark--five-real-bmrb-targets`](../README.md) and each
 `examples/<target>/README.md`. Across all five the **100 % never-exclude envelope
-holds**, and magicmaus beats full-space MAGIC by up to ~10× while committing on
+holds**, and magicmaus beats full-space MAGIC by up to ~15× while committing on
 every peak.
