@@ -203,15 +203,15 @@ same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
 contains the truth (never-exclude guarantee). n.c. = did not converge within a
 15-min budget.
 
-| Target | BMRB / PDB | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| Ubiquitin | 6457 / 1UBQ | 43 | 9.3% | 34.9% | 100% | 100.0% | 100.0% | 100% |
-| IL-2 | 28104 / 1M47 | 59 | 8.5% | 8.5% | 88.1% | 96.6% | 96.6% | 100% |
-| HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 26.3% | 82.5% | 86.0% | 86.0% | 100% |
-| REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 88.9% | 90.5% | 76.2% | 100% |
-| REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
-| MBP | 7114 / 1ANF | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
-| MSG | SI† / 1D8C | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
+| Target | BMRB / PDB | Labeling | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Ubiquitin | 6457 / 1UBQ | AILMTV | 43 | 9.3% | 34.9% | 100% | 100.0% | 100.0% | 100% |
+| IL-2 | 28104 / 1M47 | ILV | 59 | 8.5% | 8.5% | 88.1% | 96.6% | 96.6% | 100% |
+| HNH (Cas9) | 27949 / 6O56 | AILTV | 57 | 12.3% | 26.3% | 82.5% | 86.0% | 86.0% | 100% |
+| REC2 (Cas9) | 28105 / 4CMP | ILV | 63 | n.c. | 12.7% | 88.9% | 90.5% | 76.2% | 100% |
+| REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
+| MBP | 7114 / 1ANF | AILMTV | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
+| MSG | SI† / 1D8C | ILV | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et
