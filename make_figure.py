@@ -82,19 +82,21 @@ for i, (_lab, _n, mg, mm, conv) in enumerate(DATA):
     axB.text(i + w / 2, 5.5, 'n.c.', ha='center', fontsize=5.0, color=RED, rotation=90, va='bottom')
   axB.plot(i - w / 2, 100, marker='v', ms=4, color=GREEN, zorder=4)
 axB.axhline(100, ls=':', lw=0.9, color='#999', zorder=1)
-axB.text(len(DATA) - 0.5, 103, 'envelope = 100%', ha='right', fontsize=5.6, color='#666')
-# legend
-axB.bar(-9, 0, color=BLUE, label='magicmaus +soft')
-axB.bar(-9, 0, color=RED, label='MAGIC')
-axB.legend(loc='upper center', fontsize=5.6, frameon=False, ncol=2,
-           bbox_to_anchor=(0.5, 1.18), handlelength=1.0, columnspacing=1.0)
-axB.set_ylim(0, 108); axB.set_xlim(-0.6, len(DATA) - 0.4)
+# 'envelope = 100%' below the line on the left, clear of the markers on the line
+axB.text(-0.4, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
+axB.set_ylim(0, 116); axB.set_xlim(-0.6, len(DATA) - 0.4)
 axB.set_xticks(list(x))
 axB.set_xticklabels([f'{lab}\n{n}' for (lab, n, *_ ) in DATA], fontsize=5.6)
 axB.set_ylabel('methyl-level correct (%)', fontsize=7.0)
-axB.set_title('B   seven targets (methyls below)', fontsize=7.4, weight='bold', loc='left')
 axB.spines[['top', 'right']].set_visible(False)
 axB.tick_params(labelsize=6.2)
+# 'B' label and legend on a clear top band, well above the axes (no title collision)
+axB.text(-0.6, 128, 'B', fontsize=13, weight='bold', va='center')
+axB.bar(-9, 0, color=BLUE, label='magicmaus +soft')
+axB.bar(-9, 0, color=RED, label='MAGIC')
+axB.legend(loc='lower right', fontsize=5.8, frameon=False, ncol=1,
+           bbox_to_anchor=(1.02, 1.01), handlelength=1.0, labelspacing=0.3,
+           borderaxespad=0.0)
 
 fig.savefig('figure1.png', dpi=300, bbox_inches='tight', facecolor='white')
 print('wrote figure1.png')
