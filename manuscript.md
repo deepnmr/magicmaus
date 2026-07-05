@@ -156,8 +156,8 @@ flags as `ambiguous` and reports as full option sets rather than guessing. Foldi
 discarded ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on
 the sparser targets (IL-2, REC2, MBP: +1–7 points) but not on the densely
 degenerate ones (HNH, REC3), so it is offered as an option, not a default. Adding
-one further optional input — an HMBC-HMQC experiment (`--hmbc`) that links each
-Leu/Val geminal pair — lifts accuracy on every target (Table 1, +HMBC), most where
+one further optional input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*,
+2019) that links each Leu/Val geminal pair — lifts accuracy on every target (Table 1, +HMBC), most where
 degeneracy is worst: REC3 rises 28.2% → 45.9% and MBP 79.7% → 89.1%, since geminal
 ambiguity is precisely what an achiral NOE network cannot break. Running the same
 scoring inside the MAUS bounds thus yields roughly an order of magnitude more
@@ -240,6 +240,10 @@ NMR spectra from large proteins. *Prog. Nucl. Magn. Reson. Spectrosc.*,
 
 Rosenzweig,R. and Kay,L.E. (2014) Bringing dynamic molecular machines into focus
 by methyl-TROSY NMR. *Annu. Rev. Biochem.*, **83**, 291–315.
+
+Siemons,L., Mackenzie,H.W., Shukla,V.K. and Hansen,D.F. (2019) Intra-residue
+methyl–methyl correlations for valine and leucine residues in large proteins from
+a 3D-HMBC-HMQC experiment. *J. Biomol. NMR*, **73**, 749–757.
 
 Spurlino,J.C., Lu,G.-Y. and Quiocho,F.A. (1991) The 2.3-Å resolution structure of
 the maltose- or maltodextrin-binding protein, a primary receptor of bacterial
