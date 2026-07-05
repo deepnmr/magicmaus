@@ -123,7 +123,7 @@ shifts are the deposited carbon values, methyl proton shifts the mean of the
 three methyl protons, and each observed methyl becomes an anonymous HMQC peak
 (P1…Pn) whose structural identity is written only to a separate truth key.
 Because BMRB deposits no NOESY peak list, a methyl–methyl (H)CCH NOESY network
-(Wen *et al.*, 2012) is simulated from the structure (a cross peak for every methyl
+(Rossi *et al.*, 2016; Wen *et al.*, 2012) is simulated from the structure (a cross peak for every methyl
 pair within 7.9 Å, both directions)
 with 1/r^6^ intensities; the identical network is supplied to all three engines.
 We benchmark seven targets: ubiquitin (BMRB 6457, PDB 1UBQ; the reference protein
@@ -241,6 +241,10 @@ NMR spectra from large proteins. *Prog. Nucl. Magn. Reson. Spectrosc.*,
 
 Rosenzweig,R. and Kay,L.E. (2014) Bringing dynamic molecular machines into focus
 by methyl-TROSY NMR. *Annu. Rev. Biochem.*, **83**, 291–315.
+
+Rossi,P., Xia,Y., Khanra,N., Veglia,G. and Kalodimos,C.G. (2016) ^15^N and
+^13^C-SOFAST-HMQC editing enhances 3D-NOESY sensitivity in highly deuterated,
+selectively [^1^H,^13^C]-labeled proteins. *J. Biomol. NMR*, **66**, 259–271.
 
 Siemons,L., Mackenzie,H.W., Shukla,V.K. and Hansen,D.F. (2019) Intra-residue
 methyl–methyl correlations for valine and leucine residues in large proteins from
