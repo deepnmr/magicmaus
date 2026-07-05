@@ -28,11 +28,13 @@ objective and is frequently wrong. We present **magicmaus**, a hybrid that uses
 the satisfiability layer to bound the search to a certifiably truth-containing
 set of per-peak candidates, then applies an intensity-weighted NOE score *within*
 those bounds to commit to a single, globally coherent, injective assignment
-carrying a per-peak confidence tier. On maltose-binding protein (192 methyls),
-scored on an identical intensity NOESY, magicmaus assigns 72.9% of methyls
-correctly (79.7% with ambiguous-NOE evidence) versus 5.7% for the scoring method
-alone, while retaining the constraint method's 100% never-exclude guarantee as an
-explicit ambiguity envelope.
+carrying a per-peak confidence tier. Across five benchmark targets (57–192
+methyls) built from real BMRB shifts and structures, magicmaus commits a single
+answer for every peak at 33–90% methyl-level accuracy — up to an order of
+magnitude above the scoring method — while retaining the constraint method's
+100% never-exclude guarantee as an explicit ambiguity envelope. On
+maltose-binding protein (192 methyls) it assigns 72.9% of methyls correctly
+(79.7% with ambiguous-NOE evidence) versus 5.7% for scoring alone.
 
 **Availability and implementation:** magicmaus is implemented in Python 3 (NumPy,
 PySAT) and released under the MIT license at
@@ -45,18 +47,28 @@ PySAT) and released under the MIT license at
 ## 1 Introduction
 
 Methyl groups are the workhorse probes of solution NMR on large proteins and
-molecular machines: methyl-TROSY spectroscopy yields sharp signals well beyond
-100 kDa (Tugarinov *et al.*, 2003). Exploiting them requires assigning each
-observed methyl ^1^H/^13^C HMQC cross peak to a specific methyl in the protein
-structure, a laborious step that has motivated several automated,
-structure-based methods driven by methyl–methyl NOEs.
+molecular machines. Selective ^13^CH~3~ labelling of Ile/Leu/Val (and Ala, Met,
+Thr) methyls on a perdeuterated background (Tugarinov and Kay, 2004), combined
+with methyl-TROSY spectroscopy, yields sharp signals well beyond 100 kDa and up
+to the ~1 MDa regime (Tugarinov *et al.*, 2003; Rosenzweig and Kay, 2014).
+Exploiting these probes requires assigning each observed methyl ^1^H/^13^C HMQC
+cross peak to a specific methyl in the protein structure — a laborious,
+error-prone step widely regarded as the principal bottleneck of methyl NMR, which
+has motivated a family of automated, structure-based methods that match an
+experimental methyl–methyl NOE network onto the contact graph of a known
+structure (reviewed in Pritišanac *et al.*, 2020).
 
-Two paradigms dominate. **MAGIC** (Monneau *et al.*, 2017) scores a global
-peak→methyl map with a confidence-weighted NOE objective and returns the highest
-scorer — a single answer per peak. **MAUS** (Nerli *et al.*, 2021) casts the same
-problem as subgraph isomorphism and solves it with a SAT solver, returning for
-each peak the *set* of methyls consistent with every hard constraint, and
-provably never excluding the correct assignment.
+These methods differ chiefly in how they treat residual ambiguity, and magicmaus
+builds on one representative of each of two paradigms. **MAGIC** (Monneau *et
+al.*, 2017) scores a global peak→methyl map with a confidence-weighted NOE
+objective and returns the highest scorer — a single answer per peak. **MAUS**
+(Nerli *et al.*, 2021) — following the graph-matching formulation of MAGMA
+(Pritišanac *et al.*, 2017) but recast as Boolean satisfiability and solved with
+a SAT solver — returns for each peak the *set* of methyls consistent with every
+hard constraint, provably never excluding the correct assignment. Other tools
+occupy intermediate points but demand richer experimental input; MethylFLYA
+(Pritišanac *et al.*, 2019), for instance, reaches ~1% error by consensus over
+many statistical runs on multi-spectrum data.
 
 The two have complementary failure modes. MAUS is safe but indecisive: where the
 data do not force a unique answer — geminal methyl pairs, shift-degenerate peaks
@@ -77,8 +89,8 @@ HMQC peak to a candidate methyl of the matching residue type; hard clauses
 enforce exactly-one assignment per peak, injectivity, and that every firm NOE
 cross peak lands on a structural contact within the distance cutoff. For each
 peak the set of methyls appearing in at least one satisfying assignment is
-enumerated with the solver's assumption interface (Glucose; Audemard and Simon,
-2009). Because the correct global assignment is itself a model, the true methyl
+enumerated with the solver's assumption interface (Glucose, Audemard and Simon,
+2009, via PySAT, Ignatiev *et al.*, 2018). Because the correct global assignment is itself a model, the true methyl
 is present in every peak's option set — the *never-exclude* guarantee — and the
 option sets prune each peak's candidates from up to ~60 to typically 1–3.
 
@@ -105,28 +117,54 @@ tiny pruned domains, the whole pipeline completes in ~1 s for 192 methyls.
 
 ## 3 Results
 
-We benchmarked on *E. coli* maltose-binding protein (MBP) using experimental
-methyl ^13^C/^1^H shifts from BMRB entry 7114 and structure PDB 1ANF (192
-methyls: 44 Ala, 22 Ile, 60 Leu, 6 Met, 20 Thr, 40 Val). As BMRB deposits no
-NOESY peak list, a 3D (H)CCH network was simulated from 1ANF geometry with
-1/r^6^ intensities; the identical network was supplied to all three engines
-(Fig. 1B).
+**Benchmark construction.** All inputs are built by `make_peaklists.py` from a
+PDB structure and the matching BMRB chemical-shift deposition: methyl carbon
+shifts are the deposited carbon values, methyl proton shifts the mean of the
+three methyl protons, and each observed methyl becomes an anonymous HMQC peak
+(P1…Pn) whose structural identity is written only to a separate truth key.
+Because BMRB deposits no NOESY peak list, a 3D (H)CCH network is simulated from
+the structure (a cross peak for every methyl pair within 7.9 Å, both directions)
+with 1/r^6^ intensities; the identical network is supplied to all three engines.
+We benchmark five targets: *E. coli* maltose-binding protein (MBP; BMRB 7114, PDB
+1ANF; Ulrich *et al.*, 2008; Spurlino *et al.*, 1991; 192 methyls) and the four
+de-novo blind targets of the MAUS study (Nerli *et al.*, 2021) — interleukin-2
+and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — spanning 57–192
+observed methyls (Table 1).
 
-The scoring method (MAGIC) assigned 5.7% of methyls correctly (10.4% at
-residue level), consistent with its reported 4–10% on structure-simulated NOESY
-and with the near-flat-landscape limitation of full-space scoring. The
-constraint method (MAUS) resolved 26.6% of peaks uniquely — all correct — and
-abstained on the remaining 73%, with the truth in the option set for 100% of
-peaks; its result was unchanged by the intensity column, as its boolean
-constraints cannot use it. magicmaus committed a single answer for all 192 peaks
-at **72.9%** correct (**79.2%** at residue level), rising to **79.7%** (85.4%)
-when the discarded ambiguous NOEs were included, while preserving the **100%**
-never-exclude envelope throughout. The residual errors are dominated by geminal
-methyl pairs and shift-degenerate peaks — genuine symmetries an achiral NOE
-network cannot resolve — which magicmaus flags as `ambiguous` and reports as full
-option sets rather than guessing. Running the same scoring inside the MAUS bounds
-thus yields ~13× the single-answer accuracy of scoring over the full space, at no
+**Results.** MAGIC, scoring over the full type-matched space, assigned 6–12% of
+methyls correctly where it converged (Table 1) — consistent with its reported
+4–10% on structure-simulated NOESY and with the near-flat-landscape limitation of
+full-space scoring; on the two Leu-dense Cas9 domains it did not return within a
+15-min budget, itself illustrating the cost of unbounded scoring. MAUS resolved
+8–27% of peaks uniquely (all correct) and abstained on the rest, with the truth
+in the option set for 100% of peaks on every target; its result was unchanged by
+the intensity column, as its boolean constraints cannot use it. magicmaus
+committed a single answer for every peak while preserving that **100%**
+never-exclude envelope throughout, at **73–90%** methyl-level accuracy on the four
+smaller targets and **72.9%** on MBP — up to an order of magnitude above scoring
+over the full space. The one hard case is REC3, the largest and most degenerate
+(50 of 85 methyls are Leu), at 32.9%: an achiral NOE network leaves many geminal
+pairs and shift-degenerate peaks genuinely unresolvable, which magicmaus flags as
+`ambiguous` and reports as full option sets rather than guessing. Folding the
+discarded ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on
+the sparser targets (IL-2, REC2, MBP: +1–7 points) but not on the densely
+degenerate ones (HNH, REC3), so it is offered as an option, not a default.
+Running the same scoring inside the MAUS bounds thus yields roughly an order of
+magnitude more single-answer accuracy than scoring over the full space, at no
 cost to the certainty guarantee.
+
+**Table 1.** Methyl-level accuracy on five targets, all engines scored on the
+same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
+contains the truth (never-exclude guarantee). n.c. = did not converge within a
+15-min budget.
+
+| Target | BMRB / PDB | Methyls | MAGIC | magicmaus | +soft | Envelope |
+|---|---|---:|---:|---:|---:|---:|
+| IL-2 | 28104 / 1M47 | 59 | 8.5% | 88.1% | 89.8% | 100% |
+| HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 73.7% | 57.9% | 100% |
+| REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 74.6% | 76.2% | 100% |
+| REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 32.9% | 28.2% | 100% |
+| MBP | 7114 / 1ANF | 192 | 5.7% | 72.9% | 79.7% | 100% |
 
 ## 4 Conclusion
 
@@ -154,10 +192,12 @@ None declared.
 ## References
 
 Audemard,G. and Simon,L. (2009) Predicting learnt clauses quality in modern SAT
-solvers. In *Proc. IJCAI*, pp. 399–404.
+solvers. In *Proc. 21st Int. Joint Conf. on Artificial Intelligence (IJCAI)*,
+pp. 399–404.
 
 Ignatiev,A., Morgado,A. and Marques-Silva,J. (2018) PySAT: a Python toolkit for
-prototyping with SAT oracles. In *Proc. SAT*, pp. 428–437.
+prototyping with SAT oracles. In *Theory and Applications of Satisfiability
+Testing (SAT 2018)*, LNCS 10929, pp. 428–437.
 
 Monneau,Y.R. *et al.* (2017) Automatic methyl assignment in large proteins by the
 MAGIC algorithm. *J. Biomol. NMR*, **69**, 215–227.
@@ -166,10 +206,35 @@ Nerli,S., De Paula,V.S., McShan,A.C. and Sgourakis,N.G. (2021)
 Backbone-independent NMR resonance assignments of methyl probes in large
 proteins. *Nat. Commun.*, **12**, 691.
 
+Pritišanac,I. *et al.* (2017) Automatic assignment of methyl-NMR spectra of
+supramolecular machines using graph theory. *J. Am. Chem. Soc.*, **139**,
+9523–9533.
+
+Pritišanac,I., Würz,J.M., Alderson,T.R. and Güntert,P. (2019) Automatic
+structure-based NMR methyl resonance assignment in large proteins. *Nat.
+Commun.*, **10**, 4922.
+
+Pritišanac,I., Alderson,T.R. and Güntert,P. (2020) Automated assignment of methyl
+NMR spectra from large proteins. *Prog. Nucl. Magn. Reson. Spectrosc.*,
+**118–119**, 54–73.
+
+Rosenzweig,R. and Kay,L.E. (2014) Bringing dynamic molecular machines into focus
+by methyl-TROSY NMR. *Annu. Rev. Biochem.*, **83**, 291–315.
+
+Spurlino,J.C., Lu,G.-Y. and Quiocho,F.A. (1991) The 2.3-Å resolution structure of
+the maltose- or maltodextrin-binding protein, a primary receptor of bacterial
+active transport and chemotaxis. *J. Biol. Chem.*, **266**, 5202–5219.
+
+Tugarinov,V. and Kay,L.E. (2004) An isotope labeling strategy for methyl TROSY
+spectroscopy. *J. Biomol. NMR*, **28**, 165–172.
+
 Tugarinov,V., Hwang,P.M., Ollerenshaw,J.E. and Kay,L.E. (2003) Cross-correlated
 relaxation enhanced ^1^H–^13^C NMR spectroscopy of methyl groups in very high
 molecular weight proteins and protein complexes. *J. Am. Chem. Soc.*, **125**,
 10420–10428.
+
+Ulrich,E.L. *et al.* (2008) BioMagResBank. *Nucleic Acids Res.*, **36**,
+D402–D408.
 
 ---
 

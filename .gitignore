@@ -10,6 +10,7 @@ __pycache__/
 mbp_calls.tsv
 mbp_noesy_intensity.tsv
 magic_run_intensity/
+magic_run_*/
 dummy_calls.tsv
 TUTORIAL.html
 TUTORIAL_MBP.html
