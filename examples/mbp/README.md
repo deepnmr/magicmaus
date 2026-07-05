@@ -9,6 +9,7 @@ Input for the SAT assigner `maus.py` (see repo root). MAUS now consumes real
 | `hmqc.tsv` | 192 methyl HMQC **input** peaks: `label ⇥ H_ppm ⇥ C_ppm ⇥ res_type` (anonymous `P1…`) |
 | `hmqc_true.tsv` | truth key: `label ⇥ H_ppm ⇥ C_ppm ⇥ res_type ⇥ True` (scoring only) |
 | `noesy.tsv` | 1650 3D `(H)CCH` NOESY cross peaks: `label ⇥ C1 ⇥ C2 ⇥ H2 ⇥ intensity` (825 pairs ×2 directions) |
+| `noesy_intensity.tsv` | same 1650 cross peaks with **physical `1/r⁶` intensities** reconstructed from the truth key + 1ANF geometry (for `magicmaus --soft-ambiguous`) |
 | `hmbc.tsv` | 50 optional HMBC-HMQC geminal links (Leu/Val): `label ⇥ C1 ⇥ C2 ⇥ H2` |
 | `hmqc_tentative.tsv` | same as `hmqc.tsv` but with 24 tentative anchors in the `res_type` cell |
 | `mbp_options.tsv` | reference output: per-peak option sets from the run below |
@@ -82,6 +83,37 @@ truth in option set   = 192/192 = 100.0%
 ```
 
 24 anchors lift unique calls 51 → 79 while the never-exclude guarantee holds.
+
+## Intensity NOESY — the `magicmaus` payoff
+
+`noesy.tsv` is a **boolean** network (a cross peak exists iff two methyls are
+within the cutoff), so MAGIC-style scoring has nothing to grade and `magicmaus`
+commits near-randomly (14/192 correct) inside the honest MAUS envelope.
+`noesy_intensity.tsv` carries the same peaks with real `1/r⁶` intensities
+(reconstructed by `make_intensity_noesy.py` from the truth key + geometry), which
+`--soft-ambiguous` folds in as diluted tie-breakers:
+
+```bash
+python magicmaus.py examples/mbp/1ANF.pdb examples/mbp/hmqc.tsv \
+    examples/mbp/noesy_intensity.tsv --hmbc examples/mbp/hmbc.tsv \
+    --truth examples/mbp/hmqc_true.tsv --tol-h 0.01 --tol-c 0.05 --soft-ambiguous
+```
+
+```
+NOE match (tol H±0.01/C±0.05): firm=502 ambiguous(dropped)=1148 unmatched=0
+confidence: unique=52  scored=118  ambiguous=22
+truth in MAUS option set = 192/192 = 100.0%  (never-exclude guarantee preserved)
+magicmaus single call    = 171/192 = 89.1% correct
+```
+
+The MAUS envelope is unchanged (192/192 — hard constraints ignore intensity); the
+single committed call jumps **14/192 → 171/192** because real intensities break
+the geometric degeneracy a boolean network cannot. Regenerate with:
+
+```bash
+python make_intensity_noesy.py examples/mbp/1ANF.pdb examples/mbp/hmqc_true.tsv \
+    examples/mbp/noesy.tsv examples/mbp/noesy_intensity.tsv
+```
 
 Compare with MAGIC on the same data in [`../../COMPARISON.md`](../../COMPARISON.md)
 (MAGIC lives in the sibling `../magic/` project).
