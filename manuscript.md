@@ -264,7 +264,8 @@ prunes candidates from up to ~60 to 1–3; an intensity-weighted NOE score
 (MAGIC-style), applied only within those bounds via a SAT-feasible seed and
 feasibility-preserving coordinate ascent, commits to a single coherent map with a
 per-peak confidence tier (unique / scored / ambiguous). (**B**) Methyl-level
-accuracy on maltose-binding protein (192 methyls), all engines scored on the same
-1/r^6^ intensity NOESY. MAUS is decisive on 26.6% of peaks (rest abstain); MAGIC
-and magicmaus commit on all 192. Green markers denote the 100% truth-in-envelope
-guarantee, preserved by MAUS and magicmaus.](figure1.png)
+accuracy across the seven benchmark targets (43–257 methyls, ordered by size),
+all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)
+versus full-space MAGIC (red; hatched *n.c.* where scoring did not converge within
+a 15-min budget). Green markers denote the 100% truth-in-envelope guarantee,
+preserved on every target.](figure1.png)
