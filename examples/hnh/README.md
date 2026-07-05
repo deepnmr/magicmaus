@@ -26,16 +26,21 @@ python make_intensity_noesy.py examples/hnh/6O56.pdb examples/hnh/hmqc_true.tsv 
     examples/hnh/noesy.tsv examples/hnh/noesy_intensity.tsv
 ```
 
-Run magicmaus, or the full benchmark (`bench.py` adds MAGIC via the committed
-assignments):
+Run magicmaus (the benchmark protocol: firm NOE + `--soft-ambiguous`, matching
+`magicmaus_calls.tsv` and the table below), or the full head-to-head with
+`bench.py`:
 
 ```bash
 python magicmaus.py examples/hnh/6O56.pdb examples/hnh/hmqc.tsv \
-    examples/hnh/noesy_intensity.tsv --hmbc examples/hnh/hmbc.tsv \
-    --truth examples/hnh/hmqc_true.tsv --tol-h 0.01 --tol-c 0.05 --soft-ambiguous
+    examples/hnh/noesy_intensity.tsv \
+    --truth examples/hnh/hmqc_true.tsv --tol-h 0.01 --tol-c 0.05 --soft-ambiguous \
+    --out examples/hnh/magicmaus_calls.tsv
 python bench.py examples/hnh examples/hnh/6O56.pdb \
     --magic examples/hnh/magic_assignments.tsv
 ```
+
+`hmbc.tsv` is an optional geminal-link lever: adding `--hmbc examples/hnh/hmbc.tsv`
+resolves Leu/Val geminal pairs and raises accuracy further (not part of the table).
 
 ## Benchmark (same intensity NOESY for all engines)
 
