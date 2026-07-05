@@ -2,6 +2,9 @@
 title: "magicmaus: certainty-bounded, score-committed assignment of methyl NMR resonances"
 ---
 
+<!-- Build: pandoc manuscript.md --reference-doc=reference.docx -o magicmaus_AppNote.docx
+     (reference.docx sets the Table style to 9 pt) -->
+
 **Structural bioinformatics**
 
 # magicmaus: certainty-bounded, score-committed assignment of methyl NMR resonances
