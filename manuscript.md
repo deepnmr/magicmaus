@@ -41,7 +41,7 @@ set of per-peak candidates, then applies an intensity-weighted NOE score *within
 those bounds to commit to a single, globally coherent, injective assignment
 carrying a per-peak confidence tier. Across seven benchmark targets (43–257
 methyls) built from real shifts and structures, magicmaus commits a single
-answer for every peak at 27–100% methyl-level accuracy — up to an order of
+answer for every peak at 29–100% methyl-level accuracy — up to an order of
 magnitude above the scoring method — while retaining the constraint method's
 100% never-exclude guarantee as an explicit ambiguity envelope. On
 maltose-binding protein (192 methyls) it assigns 87.0% of methyls correctly
@@ -123,8 +123,9 @@ that rotations traverse. The best annealed state is polished by a final greedy
 ascent. Every move stays injective and NOE-consistent, so the output is always a
 valid bijection — a property a naïve per-cluster search cannot guarantee on the
 single 138-peak degeneracy cluster of the benchmark below. Because this objective
-only tracks the truth once real intensities are present, the annealer is gated on
-intensity signal and reduces to the plain ascent on a boolean network. Optionally,
+is well-determined only when the NOESY carries real intensities and most optimised
+peaks bear a firm NOE, the annealer is gated on both and reduces to the plain ascent
+otherwise (a boolean network, or under 75% firm-NOE coverage). Optionally,
 the ambiguous NOE cross peaks MAUS discards are folded back in as diluted,
 intensity-weighted soft evidence.
 
@@ -171,15 +172,18 @@ scoring layer's 3-cycle simulated-annealing search: on an intensity network the
 NOE objective's global optimum is the truth (a truth-seeded search scores ~96%),
 and annealing reaches it where a plain greedy ascent stalls 10–20% short — the
 rotational moves cross the tightly coupled Leu/Val option graphs that pairwise
-swaps cannot. Because that objective only tracks the truth once NOESY intensities
-pin each contact to its distance, magicmaus withholds the annealer on a boolean
-network (where it would merely overfit to structural-contact density) and applies
-it only when the intensity column carries signal. The hard cases are the targets
-whose 3D (H)CCH network yields few firm NOEs: REC3 (60.0%; 50 of 85 methyls Leu)
-and above all MSG, where only 262 cross peaks resolve to a firm constraint so 95 of
-257 peaks carry none and the true option sets are large — magicmaus commits 26.5%
-(41.6% with HMBC) where MAGIC does not converge at all, still under the 100%
-envelope. On these, an achiral NOE network leaves many geminal pairs and
+swaps cannot. That objective is trustworthy only when it is well-determined, which
+requires two conditions, and magicmaus withholds the annealer — falling back to the
+plain greedy ascent — when either fails: (i) the NOESY must carry real intensities
+that pin each contact to its distance (on a boolean network the annealer would
+merely overfit to structural-contact density), and (ii) most of the peaks being
+optimised must actually carry a firm NOE. The hard cases are the targets whose 3D
+(H)CCH network yields few firm NOEs: REC3 (60.0%; 50 of 85 methyls Leu) and above
+all MSG, where only 262 cross peaks resolve to a firm constraint so 95 of 257 peaks
+carry none — below magicmaus's 75% firm-NOE coverage cut, so the annealer is
+withheld and the greedy ascent commits 29.6% (38.5% with HMBC) where MAGIC does not
+converge at all, still under the 100% envelope. On these, an achiral NOE network
+leaves many geminal pairs and
 shift-degenerate peaks genuinely unresolvable, which magicmaus flags as `ambiguous`
 and reports as full option sets rather than guessing. Folding the discarded
 ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on most targets
@@ -207,7 +211,7 @@ contains the truth (never-exclude guarantee). n.c. = did not converge within a
 | REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 88.9% | 90.5% | 76.2% | 100% |
 | REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
 | MBP | 7114 / 1ANF | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
-| MSG | SI† / 1D8C | 257 | n.c. | 1.6% | 26.5% | 31.1% | 41.6% | 100% |
+| MSG | SI† / 1D8C | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et

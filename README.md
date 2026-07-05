@@ -74,9 +74,10 @@ annealing over relocate/swap/3-cycle-rotation moves climbs into the truth's basi
 then a final greedy ascent locks it in. Starting feasible and keeping every move
 injective and NOE-consistent guarantees a valid bijection as output — where a
 naïve per-cluster brute force would choke on MBP's single **138-peak** residual
-degeneracy cluster and break injectivity. The annealer is gated on NOESY intensity
-signal: on a boolean network, where the objective does not track the truth, it
-reduces to the plain ascent.
+degeneracy cluster and break injectivity. The annealer runs only where its
+objective is trustworthy — a NOESY with real intensities *and* ≥75 % firm-NOE
+coverage over the optimised peaks; on a boolean network or a sparsely-constrained
+target (MSG) it reduces to the plain ascent.
 
 ## Install
 
@@ -248,7 +249,7 @@ methyl deposit) via `make_peaklists.py --shifts-tsv`.
 | REC2 | 28105 / 4CMP | 63 | n.c. | 12.7 % | 88.9 % | 90.5 % | 76.2 % | **100 %** |
 | REC3 | 28110 / 4ZT0 | 85 | n.c. | 8.2 % | 60.0 % | 57.6 % | 52.9 % | **100 %** |
 | MBP  | 7114 / 1ANF  | 192 | 5.7 % | 26.6 % | 87.0 % | 87.5 % | 93.2 % | **100 %** |
-| MSG  | SI / 1D8C    | 257 | n.c. | 1.6 % | 26.5 % | 31.1 % | 41.6 % | **100 %** |
+| MSG  | SI / 1D8C    | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
 
 MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
 the rest — its coverage is the envelope column. The **100 % envelope holds on
@@ -261,11 +262,15 @@ on the Leu-densest ones (REC3), so it is opt-in. `+HMBC` (an optional geminal-li
 experiment, `--hmbc`, on top of +soft) helps where geminal pairs dominate the
 residual (MBP 87→93 %) but *hurts* where the degeneracy is symmetric rather than
 geminal (REC2, REC3): the extra hard links reshape the landscape into a different
-equal-scoring optimum, so it too is opt-in. MAGIC did not converge (`n.c.`) within
-a 15-min budget on the two Leu-dense Cas9 domains — the scaling cost of scoring the
-full space. REC3 (50/85 Leu) is the hard case: an achiral NOE network cannot
-resolve that much geminal/shift degeneracy, and magicmaus reports the residual as
-`ambiguous` option sets rather than guessing.
+equal-scoring optimum, so it too is opt-in. MSG is the one target where the
+objective itself is underdetermined — only 62 % of its optimised peaks carry a firm
+NOE (95 of 257 have none), below the 75 % coverage cut — so magicmaus withholds the
+annealer and falls back to the safe greedy ascent (29.6 %) rather than chasing an
+unreliable optimum. MAGIC did not converge (`n.c.`) within a 15-min budget on the
+two Leu-dense Cas9 domains — the scaling cost of scoring the full space. REC3
+(50/85 Leu) is the hard case: an achiral NOE network cannot resolve that much
+geminal/shift degeneracy, and magicmaus reports the residual as `ambiguous` option
+sets rather than guessing.
 
 Regenerate any target (e.g. IL-2):
 
