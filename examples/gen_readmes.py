@@ -5,6 +5,8 @@ from pathlib import Path
 
 # key: (name, bmrb, pdb, mw_kda, comp, MAGIC%, MAUS_unique%, mm%, mm_soft%, mm_hmbc%, env%, n)
 DATA = {
+  'ubq':  ('Ubiquitin',                       6457, '1UBQ', 8.6, '2 Ala, 7 Ile, 18 Leu, 1 Met, 7 Thr, 8 Val',
+           9.3, 34.9, 100.0, 90.7, 90.7, 100.0, 43),
   'il2':  ('Interleukin-2 (IL-2)',            28104, '1M47', 15.4, '9 Ile, 42 Leu, 8 Val',
            8.5, 8.5, 88.1, 89.8, 89.8, 100.0, 59),
   'hnh':  ('Cas9 HNH nuclease domain',        27949, '6O56', 15.7, '2 Ala, 7 Ile, 28 Leu, 4 Thr, 16 Val',
@@ -78,9 +80,9 @@ experiment (`--hmbc`) on top of +soft reaches {mmh}%.
 def main():
   for k, (name, bmrb, pdb, mw, comp, magic, maus, mm, mms, mmh, env, n) in DATA.items():
     magic_s = f'{magic}%' if magic is not None else 'did not converge (>15 min)'
-    soft_note = ('Soft ambiguous evidence helps here.' if mms >= mm
-                 else 'Soft ambiguous evidence does not help on this target '
-                      '(dense Leu degeneracy), so the plain call is preferred.')
+    soft_note = ('Soft ambiguous evidence helps here.' if mms > mm
+                 else 'Soft ambiguous evidence does not help on this target, '
+                      'so the plain call is preferred.')
     magic_arg = f' \\\n    --magic examples/{k}/magic_assignments.tsv' if magic is not None else ''
     txt = TEMPLATE.format(name=name, bmrb=bmrb, pdb=pdb, mw=mw, comp=comp, n=n,
                           k=k, magic=magic_s, maus=maus, mm=mm, mms=mms, mmh=mmh,

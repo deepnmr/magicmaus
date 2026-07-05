@@ -54,5 +54,5 @@ resolves Leu/Val geminal pairs and raises accuracy further (not part of the tabl
 | magicmaus +soft +HMBC | 64.9% | 100.0% |
 
 magicmaus commits a single call for all 57 peaks while preserving the MAUS
-never-exclude envelope (100.0%). Soft ambiguous evidence does not help on this target (dense Leu degeneracy), so the plain call is preferred. Adding the optional HMBC geminal-link
+never-exclude envelope (100.0%). Soft ambiguous evidence does not help on this target, so the plain call is preferred. Adding the optional HMBC geminal-link
 experiment (`--hmbc`) on top of +soft reaches 64.9%.
