@@ -267,8 +267,9 @@ examples/{il2,hnh,rec2,rec3}/   MAUS-paper blind targets (BMRB + PDB)
 
 Each `examples/<target>/` is self-contained: the PDB, the BMRB deposition
 (`bmr<id>.str`), the generated peak lists (`hmqc*.tsv`, `noesy*.tsv`, `hmbc.tsv`),
-the MAGIC output (`magic_assignments.tsv`, where MAGIC converged), and a `README.md`
-with the exact regenerate/benchmark commands.
+the committed magicmaus output (`magicmaus_calls.tsv`), the MAGIC output
+(`magic_assignments.tsv`, where MAGIC converged), and a `README.md` with the exact
+regenerate/benchmark commands.
 
 ```
 magicmaus.py             the hybrid engine (MAUS SAT bound + MAGIC scored commit)

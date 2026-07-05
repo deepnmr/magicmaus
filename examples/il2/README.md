@@ -14,8 +14,9 @@ truth key (`hmqc_true.tsv`) is used only for scoring. The NOESY is a simulated 3
 intensities), re-matched to HMQC peaks by frequency at run time.
 
 Everything to reproduce this target lives in this directory: the PDB, the BMRB
-deposition (`bmr28104.str`), the generated peak lists, and the MAGIC assignment
-output (`magic_assignments.tsv`) where MAGIC converged.
+deposition (`bmr28104.str`), the generated peak lists, the committed magicmaus
+output (`magicmaus_calls.tsv`: per-peak call, confidence tier, option set, truth),
+and the MAGIC assignment output (`magic_assignments.tsv`) where MAGIC converged.
 
 Regenerate the peak lists:
 
