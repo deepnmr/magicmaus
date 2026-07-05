@@ -70,7 +70,7 @@ DATA = [
   ('REC2', 63, None, 12.7, 90.5, False),
   ('REC3', 85, None, 8.2, 57.6, False),
   ('MBP', 192, 5.7, 26.6, 87.5, True),
-  ('MSG', 257, None, 1.6, 31.1, False),
+  ('MSG', 257, None, 1.6, 33.5, False),
 ]
 x = range(len(DATA))
 w = 0.26
