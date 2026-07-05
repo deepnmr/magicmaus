@@ -113,7 +113,7 @@ option set, retained as an explicit ambiguity envelope; and a confidence tier
 from the local scoring margin — **unique** (forced by hard constraints),
 **scored** (resolved by the NOE score), or **ambiguous** (a tied alternative
 exists, i.e. a genuine symmetry). Because the scored search runs only over the
-tiny pruned domains, the whole pipeline completes in ~1 s for 192 methyls.
+tiny pruned domains, the whole pipeline completes in ~0.3 s for 192 methyls.
 
 ## 3 Results
 

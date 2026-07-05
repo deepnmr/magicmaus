@@ -3,7 +3,7 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'maus'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import maus  # noqa: E402
 import magicmaus as mm  # noqa: E402
 
