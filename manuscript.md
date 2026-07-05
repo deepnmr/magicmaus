@@ -103,7 +103,14 @@ peak the set of methyls appearing in at least one satisfying assignment is
 enumerated with the solver's assumption interface (Glucose, Audemard and Simon,
 2009, via PySAT, Ignatiev *et al.*, 2018). Because the correct global assignment is itself a model, the true methyl
 is present in every peak's option set — the *never-exclude* guarantee — and the
-option sets prune each peak's candidates from up to ~60 to typically 1–3.
+option sets prune each peak's candidates from up to ~60 to typically 1–3. This is
+also why the tempting shortcut of assigning a peak to the last unclaimed methyl of
+its type is unsound: the structure routinely carries many more methyls of a type
+than are observed (REC3, for instance, has 292 Leu methyls but only 50 Leu peaks),
+so an unclaimed methyl may simply be unobserved rather than the peak's answer.
+Because MAUS models a methyl as free to go unassigned, its enumeration already
+performs every elimination that injectivity licenses — but no more — and thereby
+keeps the truth in the set instead of forcing a wrong pin.
 
 **Layer 2 (commit).** The per-peak option sets are enumerated *independently*, so
 their product is not jointly realizable and does not identify a single best map.
@@ -189,14 +196,18 @@ and reports as full option sets rather than guessing. Folding the discarded
 ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on most targets
 (IL-2 +8.5, HNH +3.5, REC2 +1.6 points) but was a wash on the densely degenerate
 REC3, so it is offered as an option, not a default. Adding one further optional
-input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*, 2019) that links each
-Leu/Val geminal pair — lifts accuracy where geminal pairs dominate the residual
-(MBP 87.5% → 93.2%; Table 1, +HMBC) but reshapes the constrained landscape into a
-different equal-scoring optimum where the degeneracy is symmetric rather than
-geminal (REC2, REC3), so it too is opt-in. Running the same
-scoring inside the MAUS bounds thus yields roughly an order of magnitude more
-single-answer accuracy than scoring over the full space, at no cost to the
-certainty guarantee, and improves monotonically as experimental input is added.
+input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*, 2019) that identifies
+which two HMQC peaks are the geminal pair of one residue — enters as a hard
+constraint tying that pair to a single structural residue. It does not by itself
+orient δ1 versus δ2 (the constraint admits both orderings); it collapses
+*cross-residue* ambiguity by coupling the pair's NOE evidence, and hands the
+orientation to the score. Its net effect on accuracy is target-dependent: it helps
+MBP (87.5% → 93.2%; Table 1, +HMBC) but on the crowded REC2/REC3 domains the extra
+hard links reshape the constrained landscape into a different equal-scoring optimum
+that scores lower, so it too is opt-in. Running the same scoring inside the MAUS
+bounds thus yields roughly an order of magnitude more single-answer accuracy than
+scoring over the full space, at no cost to the certainty guarantee, and improves
+with added experimental input where that input is informative.
 
 **Table 1.** Methyl-level accuracy on seven targets, all engines scored on the
 same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
@@ -221,27 +232,101 @@ adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft,
 forcing each Leu/Val geminal pair onto its two structural methyls.
 
 The labeling scheme (Table 1) shapes the assignment problem in two ways that the
-hybrid makes explicit. First, because a peak competes only with methyls of its own
-residue type, the number of labeled types sets the granularity of the candidate
-partition: the two AILMTV targets (ubiquitin, MBP) spread their peaks over six
-types, and the added Ala/Thr/Met probes both shrink each peak's candidate domain
-and act as isolated anchors — Ala Cβ and Thr Cγ2 are single, non-prochiral methyls
-whose assignments, once fixed, propagate through the NOE network. The four ILV
-targets instead concentrate every peak into three types, so the domains are larger
-and the search rests entirely on the Ile/Leu/Val network. Second, labeling sets the
-irreducible geminal load: Leu (δ1/δ2) and Val (γ1/γ2) carry prochiral methyl pairs
-that an achiral NOE network cannot orient, whereas Ile contributes a single δ1
-methyl and so is an unambiguous anchor. This is why the residual `ambiguous` tier is
-dominated by Leu/Val pairs and why the geminal-resolving HMBC lever, not more NOEs,
-is what lifts the Leu-dense targets. Labeling is not the sole determinant of
-difficulty, however: it interacts with NOE information content. IL-2 and REC2 are
-Leu-rich (71% and 76% Leu) yet reach ~88–90% because their NOE networks are dense,
-while REC3 and MSG fall to 60% and 30% not from their labeling alone but because
-sparse carbon-only matching leaves too few firm NOEs to pin the enlarged ILV
-domains (Section 3, coverage gate). In practice the two levers of the experiment map
-onto the two bottlenecks: extending the labeling beyond ILV partitions the problem
-and supplies anchors, while an HMBC geminal-link experiment removes the Leu/Val
-symmetry that no methyl–methyl NOE network can break.
+residue-resolved accuracy of Table 2 makes explicit. First, because a peak competes
+only with methyls of its own residue type, the number of labeled types sets the
+granularity of the candidate partition: the two AILMTV targets (ubiquitin, MBP)
+spread their peaks over six types, so each peak competes against fewer same-type
+methyls than in a three-type ILV set. Second, labeling sets the irreducible geminal
+load: Leu (δ1/δ2) and Val (γ1/γ2) carry prochiral methyl pairs that an achiral NOE
+network cannot orient, whereas Ile contributes a single δ1 methyl. Table 2 shows the
+two effects: Ile is the most reliably assigned type — 100% on five of seven targets
+— because it is single-methyl and, being typically buried, NOE-rich; Leu and Val
+are the bottleneck, at 100% only where the network is dense (ubiquitin, IL-2) and
+falling to ~30–50% on the sparse REC3/MSG networks. This is why the residual
+`ambiguous` tier is dominated by Leu/Val pairs — an orientation the intensity score
+resolves only when the two methyls make sufficiently different structural contacts,
+and reports as a coin flip when they do not.
+
+Being single-methyl, however, is necessary but not sufficient: removing geminal
+ambiguity and carrying NOE information are independent. On MBP, Ala Cβ (68%) and Thr
+Cγ2 (70%) are the *least* accurately assigned types (Table 2) despite no prochiral
+degeneracy, because these often surface-exposed, shift-clustered methyls simply make
+too few methyl–methyl NOEs to be pinned — whereas Ile on the same protein is 100%.
+Labeling is therefore not the sole determinant of difficulty; it interacts with NOE
+information content. IL-2 and REC2 are Leu-rich (71% and 76% Leu) yet reach ~88–90%
+because their networks are dense, while REC3 and MSG fall to 60% and 30% not from
+their labeling alone but because sparse carbon-only matching leaves too few firm NOEs
+to pin the enlarged ILV domains (Section 3, coverage gate). In practice the levers
+attack different bottlenecks: extending the labeling beyond ILV partitions the
+problem into finer type classes, an HMBC geminal-link experiment collapses the
+cross-residue ambiguity by tying each geminal pair to one residue, and the
+intensity-weighted score is what finally orients δ1/δ2 within the pair — none is a
+universal fix, and the last two are opt-in.
+
+**Table 2.** Methyl-level accuracy of the committed magicmaus call (+soft) resolved
+by residue type. Each cell is correct/observed for that type; a dash marks a type
+absent from the target's labeling. Ile is near-perfect except on the sparse
+REC3/MSG networks; Leu/Val carry the geminal degeneracy; Ala/Thr, though
+single-methyl, are NOE-poor on MBP.
+
+| Target | Ile | Leu | Val | Ala | Thr | Met | Total |
+|---|---|---|---|---|---|---|---|
+| Ubiquitin | 100% (7/7) | 100% (18/18) | 100% (8/8) | 100% (2/2) | 100% (7/7) | 100% (1/1) | 100% (43/43) |
+| IL-2 | 100% (9/9) | 100% (42/42) | 75% (6/8) | — | — | — | 97% (57/59) |
+| HNH | 100% (7/7) | 86% (24/28) | 75% (12/16) | 100% (2/2) | 100% (4/4) | — | 86% (49/57) |
+| REC2 | 100% (9/9) | 88% (42/48) | 100% (6/6) | — | — | — | 90% (57/63) |
+| REC3 | 54% (7/13) | 52% (26/50) | 73% (16/22) | — | — | — | 58% (49/85) |
+| MBP | 100% (22/22) | 97% (58/60) | 95% (38/40) | 68% (30/44) | 70% (14/20) | 100% (6/6) | 88% (168/192) |
+| MSG | 44% (18/41) | 32% (42/133) | 31% (26/83) | — | — | — | 33% (86/257) |
+
+Resolving the accuracy to the individual prochiral methyl (Table 3) confirms that
+the residual Leu/Val error is a geminal swap rather than random misassignment: on
+every target the two members of each pair degrade in near-lockstep — HNH Leu δ1 and
+δ2 are both 86%, its Val γ1 and γ2 both 75%, REC2 Leu δ1/δ2 both 88% — the exact
+signature of the achiral network placing the pair on the right *residue* but the
+wrong *methyl*. Both members stay inside the MAUS envelope (the truth is never
+excluded), so the swap is a calibrated coin flip that the confidence tier flags as
+`ambiguous` and that only a signal able to tell δ1 from δ2 can break — the intensity
+score where their structural contacts differ, or an independent stereospecific
+assignment where they do not. An HMBC geminal-link experiment does *not* break it:
+by construction its constraint admits both orderings of the pair (Section 3), so it
+resolves which residue, not which methyl. Ile δ1, having no geminal partner, carries
+no such symmetry and is assigned outright wherever the network is dense.
+
+**Table 3.** Accuracy resolved to the individual methyl carbon (magicmaus +soft).
+Geminal partners (Leu δ1/δ2, Val γ1/γ2) are listed separately; their near-equal
+columns are the geminal-swap signature. A dash marks a methyl absent from the
+target's labeling.
+
+| Target | Ile δ1 | Leu δ1 | Leu δ2 | Val γ1 | Val γ2 | Ala β | Thr γ2 | Met ε |
+|---|---|---|---|---|---|---|---|---|
+| Ubiquitin | 100% (7/7) | 100% (9/9) | 100% (9/9) | 100% (4/4) | 100% (4/4) | 100% (2/2) | 100% (7/7) | 100% (1/1) |
+| IL-2 | 100% (9/9) | 100% (21/21) | 100% (21/21) | 75% (3/4) | 75% (3/4) | — | — | — |
+| HNH | 100% (7/7) | 86% (12/14) | 86% (12/14) | 75% (6/8) | 75% (6/8) | 100% (2/2) | 100% (4/4) | — |
+| REC2 | 100% (9/9) | 88% (21/24) | 88% (21/24) | 100% (3/3) | 100% (3/3) | — | — | — |
+| REC3 | 54% (7/13) | 52% (13/25) | 52% (13/25) | 73% (8/11) | 73% (8/11) | — | — | — |
+| MBP | 100% (22/22) | 97% (29/30) | 97% (29/30) | 95% (19/20) | 95% (19/20) | 68% (30/44) | 70% (14/20) | 100% (6/6) |
+| MSG | 44% (18/41) | 33% (22/67) | 30% (20/66) | 31% (13/42) | 32% (13/41) | — | — | — |
+
+The same geminal-swap lens revises how the MAUS column should be read. MAUS's
+decisive fraction (Table 1, MAUS) counts only peaks pinned to a single *methyl*, so
+it books every geminal-unresolved pair as an abstention — yet such a pair is already
+decisive at the *residue* level: the truth's residue is fixed, only its δ1/δ2 (or
+γ1/γ2) label is open. Collapsing each option set to its residues, MAUS is in fact
+residue-decisive — and, by never-exclude, correct — on far more peaks than its
+methyl-unique count suggests: 88.4% vs 34.9% on ubiquitin, 53.6% vs 26.6% on MBP,
+and 50.9% vs 26.3% on HNH. This residue-vs-methyl gap is a direct readout of how much
+of MAUS's ambiguity is *merely geminal* — a δ1/δ2 orientation that only the score (or
+a stereospecific measurement) can settle, since it is the one thing the HMBC link
+leaves open. Its complement, the fraction still spanning more than one residue, is the
+*cross-residue* ambiguity, and it dominates the Leu-crowded ILV targets (IL-2 81%, REC2
+68%, MSG 94% of peaks) where many Leu compete for one peak. That is exactly the part
+the HMBC link collapses: tying each geminal pair to one residue couples their NOE
+evidence and lifts the residue-decisive fraction sharply on those targets (REC2 32% →
+68%, HNH 51% → 79%). Whether that structural collapse improves the final methyl-level
+call, however, is target-dependent — it does on MBP but reshapes the crowded REC2/REC3
+landscapes into a worse-scoring optimum — which, together with the fact that the swap
+itself is left to the score, is why HMBC is opt-in rather than a universal lever.
 
 ## 4 Conclusion
 
