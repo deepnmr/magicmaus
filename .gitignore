@@ -14,3 +14,7 @@ magic_run_*/
 dummy_calls.tsv
 TUTORIAL.html
 TUTORIAL_MBP.html
+
+# office temp/lock files
+~$*
+*.tmp
