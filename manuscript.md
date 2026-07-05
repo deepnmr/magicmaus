@@ -220,6 +220,29 @@ rest it abstains, so its coverage is the Envelope column (100%). The +HMBC colum
 adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft,
 forcing each Leu/Val geminal pair onto its two structural methyls.
 
+The labeling scheme (Table 1) shapes the assignment problem in two ways that the
+hybrid makes explicit. First, because a peak competes only with methyls of its own
+residue type, the number of labeled types sets the granularity of the candidate
+partition: the two AILMTV targets (ubiquitin, MBP) spread their peaks over six
+types, and the added Ala/Thr/Met probes both shrink each peak's candidate domain
+and act as isolated anchors — Ala Cβ and Thr Cγ2 are single, non-prochiral methyls
+whose assignments, once fixed, propagate through the NOE network. The four ILV
+targets instead concentrate every peak into three types, so the domains are larger
+and the search rests entirely on the Ile/Leu/Val network. Second, labeling sets the
+irreducible geminal load: Leu (δ1/δ2) and Val (γ1/γ2) carry prochiral methyl pairs
+that an achiral NOE network cannot orient, whereas Ile contributes a single δ1
+methyl and so is an unambiguous anchor. This is why the residual `ambiguous` tier is
+dominated by Leu/Val pairs and why the geminal-resolving HMBC lever, not more NOEs,
+is what lifts the Leu-dense targets. Labeling is not the sole determinant of
+difficulty, however: it interacts with NOE information content. IL-2 and REC2 are
+Leu-rich (71% and 76% Leu) yet reach ~88–90% because their NOE networks are dense,
+while REC3 and MSG fall to 60% and 30% not from their labeling alone but because
+sparse carbon-only matching leaves too few firm NOEs to pin the enlarged ILV
+domains (Section 3, coverage gate). In practice the two levers of the experiment map
+onto the two bottlenecks: extending the labeling beyond ILV partitions the problem
+and supplies anchors, while an HMBC geminal-link experiment removes the Leu/Val
+symmetry that no methyl–methyl NOE network can break.
+
 ## 4 Conclusion
 
 magicmaus shows that constraint satisfaction and scoring are not competing
