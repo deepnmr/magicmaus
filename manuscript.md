@@ -306,6 +306,7 @@ feasibility-preserving coordinate ascent, commits to a single coherent map with 
 per-peak confidence tier (unique / scored / ambiguous). (**B**) Methyl-level
 accuracy across the seven benchmark targets (43–257 methyls, ordered by size),
 all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)
-versus full-space MAGIC (red; hatched *n.c.* where scoring did not converge within
-a 15-min budget). Green markers denote the 100% truth-in-envelope guarantee,
+versus MAUS unique-only calls (purple; the constraint layer's decisive fraction,
+abstaining elsewhere) and full-space MAGIC (red; hatched *n.c.* where scoring did
+not converge within a 15-min budget). Green markers denote the 100% truth-in-envelope guarantee,
 preserved on every target.](figure1.png)
