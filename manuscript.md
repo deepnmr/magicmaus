@@ -6,11 +6,19 @@ title: "magicmaus: certainty-bounded, score-committed assignment of methyl NMR r
 
 # magicmaus: certainty-bounded, score-committed assignment of methyl NMR resonances
 
-**Donghan Lee** ^1,\*^
+Joonhyeok Choi ^1,2,†^, Sang-Yeop Lee ^3,4,†^, Sooho Koh ^1^, Minjune Yang ^1^, Kyoung-Seok Ryu ^1,4^, Donghan Lee ^1,4,\*^
 
-^1^ Korea Basic Science Institute, Ochang, Republic of Korea.
+^1^ Center for Protein Structure and Drug Mechanism Research, Korea Basic Science Institute, Cheongju, 28119, Republic of Korea
 
-^\*^ To whom correspondence should be addressed.
+^2^ Department of Applied Pharmacy, College of Pharmacy, Chungbuk National University, Cheongju, 28160, Republic of Korea
+
+^3^ Center for Target-to-Therapeutics Research, Korea Basic Science Institute, Cheongju, 28119, Republic of Korea
+
+^4^ Department of Convergent Analytical Science, University of Science and Technology, Daejeon, 34113, Republic of Korea
+
+^\*^ Corresponding author. Donghan Lee, Center for Protein Structure and Drug Mechanism Research, Korea Basic Science Institute, Cheongju, 28119, Republic of Korea; Department of Convergent Analytical Science, University of Science and Technology, Daejeon, 34113, Republic of Korea (dlee04@kbsi.re.kr)
+
+^†^ These authors contributed equally.
 
 Associate Editor: (to be assigned)
 
@@ -40,7 +48,7 @@ maltose-binding protein (192 methyls) it assigns 72.9% of methyls correctly
 PySAT) and released under the MIT license at
 <https://github.com/deepnmr/magicmaus>, with tutorials and the benchmark data.
 
-**Contact:** kbsi.bionmr@gmail.com
+**Contact:** dlee04@kbsi.re.kr
 
 ---
 
@@ -209,6 +217,25 @@ The author thanks the maintainers of PySAT and the BMRB.
 None declared.
 
 *Conflict of Interest:* none declared.
+
+## Acknowledgements
+
+The authors gratefully acknowledge Eun-Hee Kim and Dr. Hae-Kap Cheong from the
+Korea Basic Science Institute (KBSI) for their valuable support and discussions.
+
+## Conflict of interest
+
+None declared.
+
+## Funding
+
+This work was supported by the Korea Basic Science Institute (KBSI) internal
+research programs [C612120, C623200, C623300, C625130, and C539110].
+
+## Data availability
+
+The program underlying this article is available on the project website at
+<https://github.com/deepnmr/magicmaus>.
 
 ## References
 
