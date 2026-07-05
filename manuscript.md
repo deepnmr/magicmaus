@@ -122,8 +122,9 @@ PDB structure and the matching BMRB chemical-shift deposition: methyl carbon
 shifts are the deposited carbon values, methyl proton shifts the mean of the
 three methyl protons, and each observed methyl becomes an anonymous HMQC peak
 (P1…Pn) whose structural identity is written only to a separate truth key.
-Because BMRB deposits no NOESY peak list, a 3D (H)CCH network is simulated from
-the structure (a cross peak for every methyl pair within 7.9 Å, both directions)
+Because BMRB deposits no NOESY peak list, a methyl–methyl (H)CCH NOESY network
+(Wen *et al.*, 2012) is simulated from the structure (a cross peak for every methyl
+pair within 7.9 Å, both directions)
 with 1/r^6^ intensities; the identical network is supplied to all three engines.
 We benchmark seven targets: ubiquitin (BMRB 6457, PDB 1UBQ; the reference protein
 of biomolecular NMR), *E. coli* maltose-binding protein (MBP; BMRB 7114, PDB
@@ -259,6 +260,10 @@ molecular weight proteins and protein complexes. *J. Am. Chem. Soc.*, **125**,
 
 Ulrich,E.L. *et al.* (2008) BioMagResBank. *Nucleic Acids Res.*, **36**,
 D402–D408.
+
+Wen,J., Zhou,P. and Wu,J. (2012) Efficient acquisition of high-resolution 4-D
+diagonal-suppressed methyl–methyl NOESY for large proteins. *J. Magn. Reson.*,
+**218**, 128–132.
 
 ---
 
