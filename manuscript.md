@@ -41,11 +41,11 @@ set of per-peak candidates, then applies an intensity-weighted NOE score *within
 those bounds to commit to a single, globally coherent, injective assignment
 carrying a per-peak confidence tier. Across seven benchmark targets (43–257
 methyls) built from real shifts and structures, magicmaus commits a single
-answer for every peak at 30–100% methyl-level accuracy — up to an order of
+answer for every peak at 27–100% methyl-level accuracy — up to an order of
 magnitude above the scoring method — while retaining the constraint method's
 100% never-exclude guarantee as an explicit ambiguity envelope. On
-maltose-binding protein (192 methyls) it assigns 72.9% of methyls correctly
-(79.7% with ambiguous-NOE evidence) versus 5.7% for scoring alone.
+maltose-binding protein (192 methyls) it assigns 87.0% of methyls correctly
+(87.5% with ambiguous-NOE evidence) versus 5.7% for scoring alone.
 
 **Availability and implementation:** magicmaus is implemented in Python 3 (NumPy,
 PySAT) and released under the MIT license at
@@ -111,13 +111,22 @@ This is precisely the question a score answers. Restricting every peak's domain
 to its option set — which removes only methyls appearing in no satisfying map,
 and so preserves the solution space and the truth — magicmaus obtains one
 jointly-consistent assignment from the SAT solver and refines it by
-feasibility-preserving coordinate ascent on a MAGIC-style objective: each firm
-NOE contributes intensity·(1/r^6^) for the structural contact it is placed on, so
-a strong NOE is driven onto a close contact. Every move stays injective and
-NOE-consistent, so the output is always a valid bijection — a property a naïve
-per-cluster search cannot guarantee on the single 138-peak degeneracy cluster of
-the benchmark below. Optionally, the ambiguous NOE cross peaks MAUS discards are
-folded back in as diluted, intensity-weighted soft evidence.
+feasibility-preserving search on a MAGIC-style objective: each firm NOE
+contributes intensity·(1/r^6^) for the structural contact it is placed on, so a
+strong NOE is driven onto a close contact. A plain greedy ascent settles into the
+nearest local optimum, which on the near-flat MAGIC landscape lies 10–20% below
+the truth's objective; magicmaus instead runs simulated annealing over three
+feasibility-preserving move classes — relocate, pairwise swap, and three-cycle
+rotation — the last being essential, since a swap requires the displaced methyl to
+lie in its partner's option set and stalls in the tightly coupled Leu/Val graphs
+that rotations traverse. The best annealed state is polished by a final greedy
+ascent. Every move stays injective and NOE-consistent, so the output is always a
+valid bijection — a property a naïve per-cluster search cannot guarantee on the
+single 138-peak degeneracy cluster of the benchmark below. Because this objective
+only tracks the truth once real intensities are present, the annealer is gated on
+intensity signal and reduces to the plain ascent on a boolean network. Optionally,
+the ambiguous NOE cross peaks MAUS discards are folded back in as diluted,
+intensity-weighted soft evidence.
 
 Each peak is reported three ways (Fig. 1A): the committed single call; its MAUS
 option set, retained as an explicit ambiguity envelope; and a confidence tier
@@ -155,23 +164,32 @@ resolved 2–35% of peaks uniquely (all correct) and abstained on the rest, with
 truth in the option set for 100% of peaks on every target; its result was unchanged by
 the intensity column, as its boolean constraints cannot use it. magicmaus
 committed a single answer for every peak while preserving that **100%**
-never-exclude envelope throughout, at **73–100%** methyl-level accuracy on the
-smaller targets (a perfect 43/43 on ubiquitin) and **72.9%** on MBP — up to an
-order of magnitude above scoring over the full space. The hard cases are the
-targets whose 3D (H)CCH network yields few firm NOEs: REC3 (32.9%; 50 of 85
-methyls Leu) and above all MSG, where only 262 cross peaks resolve to a firm
-constraint so 95 of 257 peaks carry none and the true option sets are large —
-magicmaus commits 29.6% (38.5% with HMBC) where MAGIC does not converge at all,
-still under the 100% envelope. On these, an achiral NOE network leaves many
-geminal pairs and shift-degenerate peaks genuinely unresolvable, which magicmaus
-flags as `ambiguous` and reports as full option sets rather than guessing. Folding the
-discarded ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on
-the sparser targets (IL-2, REC2, MBP: +1–7 points) but not on the densely
-degenerate ones (HNH, REC3), so it is offered as an option, not a default. Adding
-one further optional input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*,
-2019) that links each Leu/Val geminal pair — lifts accuracy on every target (Table 1, +HMBC), most where
-degeneracy is worst: REC3 rises 28.2% → 45.9% and MBP 79.7% → 89.1%, since geminal
-ambiguity is precisely what an achiral NOE network cannot break. Running the same
+never-exclude envelope throughout, at **82–100%** methyl-level accuracy on the
+smaller targets (a perfect 43/43 on ubiquitin) and **87.0%** on MBP — up to an
+order of magnitude above scoring over the full space. This accuracy comes from the
+scoring layer's 3-cycle simulated-annealing search: on an intensity network the
+NOE objective's global optimum is the truth (a truth-seeded search scores ~96%),
+and annealing reaches it where a plain greedy ascent stalls 10–20% short — the
+rotational moves cross the tightly coupled Leu/Val option graphs that pairwise
+swaps cannot. Because that objective only tracks the truth once NOESY intensities
+pin each contact to its distance, magicmaus withholds the annealer on a boolean
+network (where it would merely overfit to structural-contact density) and applies
+it only when the intensity column carries signal. The hard cases are the targets
+whose 3D (H)CCH network yields few firm NOEs: REC3 (60.0%; 50 of 85 methyls Leu)
+and above all MSG, where only 262 cross peaks resolve to a firm constraint so 95 of
+257 peaks carry none and the true option sets are large — magicmaus commits 26.5%
+(41.6% with HMBC) where MAGIC does not converge at all, still under the 100%
+envelope. On these, an achiral NOE network leaves many geminal pairs and
+shift-degenerate peaks genuinely unresolvable, which magicmaus flags as `ambiguous`
+and reports as full option sets rather than guessing. Folding the discarded
+ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on most targets
+(IL-2 +8.5, HNH +3.5, REC2 +1.6 points) but was a wash on the densely degenerate
+REC3, so it is offered as an option, not a default. Adding one further optional
+input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*, 2019) that links each
+Leu/Val geminal pair — lifts accuracy where geminal pairs dominate the residual
+(MBP 87.5% → 93.2%; Table 1, +HMBC) but reshapes the constrained landscape into a
+different equal-scoring optimum where the degeneracy is symmetric rather than
+geminal (REC2, REC3), so it too is opt-in. Running the same
 scoring inside the MAUS bounds thus yields roughly an order of magnitude more
 single-answer accuracy than scoring over the full space, at no cost to the
 certainty guarantee, and improves monotonically as experimental input is added.
@@ -183,13 +201,13 @@ contains the truth (never-exclude guarantee). n.c. = did not converge within a
 
 | Target | BMRB / PDB | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| Ubiquitin | 6457 / 1UBQ | 43 | 9.3% | 34.9% | 100% | 90.7% | 90.7% | 100% |
-| IL-2 | 28104 / 1M47 | 59 | 8.5% | 8.5% | 88.1% | 89.8% | 89.8% | 100% |
-| HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 26.3% | 73.7% | 57.9% | 64.9% | 100% |
-| REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 74.6% | 76.2% | 82.5% | 100% |
-| REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 8.2% | 32.9% | 28.2% | 45.9% | 100% |
-| MBP | 7114 / 1ANF | 192 | 5.7% | 26.6% | 72.9% | 79.7% | 89.1% | 100% |
-| MSG | SI† / 1D8C | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
+| Ubiquitin | 6457 / 1UBQ | 43 | 9.3% | 34.9% | 100% | 100.0% | 100.0% | 100% |
+| IL-2 | 28104 / 1M47 | 59 | 8.5% | 8.5% | 88.1% | 96.6% | 96.6% | 100% |
+| HNH (Cas9) | 27949 / 6O56 | 57 | 12.3% | 26.3% | 82.5% | 86.0% | 86.0% | 100% |
+| REC2 (Cas9) | 28105 / 4CMP | 63 | n.c. | 12.7% | 88.9% | 90.5% | 76.2% | 100% |
+| REC3 (Cas9) | 28110 / 4ZT0 | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
+| MBP | 7114 / 1ANF | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
+| MSG | SI† / 1D8C | 257 | n.c. | 1.6% | 26.5% | 31.1% | 41.6% | 100% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et
@@ -305,7 +323,7 @@ diagonal-suppressed methyl–methyl NOESY for large proteins. *J. Magn. Reson.*,
 to a per-peak option set that provably contains the truth (100% envelope) and
 prunes candidates from up to ~60 to 1–3; an intensity-weighted NOE score
 (MAGIC-style), applied only within those bounds via a SAT-feasible seed and
-feasibility-preserving coordinate ascent, commits to a single coherent map with a
+feasibility-preserving 3-cycle simulated annealing, commits to a single coherent map with a
 per-peak confidence tier (unique / scored / ambiguous). (**B**) Methyl-level
 accuracy across the seven benchmark targets (43–257 methyls, ordered by size),
 all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)

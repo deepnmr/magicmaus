@@ -44,8 +44,8 @@ HMQC + NOESY peak lists + PDB
         ▼
 ┌─────────────────────────────┐   layer 2  (MAGIC-style, new)
 │ SAT-feasible seed assignment │   one jointly-consistent, injective map
-│ + coordinate ascent on the   │   maximise Σ NOE-contact strength (~1/r⁶)
-│ NOE-contact objective        │   every move stays feasible
+│ + 3-cycle simulated-anneal   │   maximise Σ NOE-contact strength (~1/r⁶)
+│ search on NOE-contact score  │   every move stays feasible
 └─────────────────────────────┘
         │
         ▼
@@ -66,11 +66,17 @@ Why it works and why each half is load-bearing:
 - The MAUS option set is still reported as an **honest ambiguity envelope**, so
   the never-exclude guarantee survives even though a single answer is committed.
 
-The scored step is a **feasibility-preserving coordinate ascent** seeded by one
-SAT model of the pruned domains. Starting feasible and keeping every move
+The scored step is a **feasibility-preserving 3-cycle simulated-annealing search**
+seeded by one SAT model of the pruned domains. A plain greedy ascent stalls in a
+local optimum 10–20% below the truth's objective on the near-flat MAGIC landscape;
+annealing over relocate/swap/3-cycle-rotation moves climbs into the truth's basin
+(the rotations cross the tightly coupled Leu/Val option graphs a swap cannot),
+then a final greedy ascent locks it in. Starting feasible and keeping every move
 injective and NOE-consistent guarantees a valid bijection as output — where a
 naïve per-cluster brute force would choke on MBP's single **138-peak** residual
-degeneracy cluster and break injectivity.
+degeneracy cluster and break injectivity. The annealer is gated on NOESY intensity
+signal: on a boolean network, where the objective does not track the truth, it
+reduces to the plain ascent.
 
 ## Install
 
@@ -124,17 +130,17 @@ python magicmaus.py examples/mbp/1ANF.pdb examples/mbp/hmqc.tsv examples/mbp/noe
 
 ```
 --- MAUS envelope (never excludes truth) ---
-unique(1 option)      = 51/192
-ambiguous(2-3 options)= 81/192
-ambiguous(>3 options) = 60/192
+unique(1 option)      = 44/192
+ambiguous(2-3 options)= 73/192
+ambiguous(>3 options) = 75/192
 --- magicmaus commitment (single coherent call) ---
-confidence: unique=51  scored=67  ambiguous=74
+confidence: unique=44  scored=66  ambiguous=82
 --- scored vs truth ---
 truth in MAUS option set = 192/192 = 100.0%  (never-exclude guarantee preserved)
-magicmaus single call    = 121/192 = 63.0% correct
-    unique   : 51/51 = 100.0% correct
-    scored   : 44/67 = 65.7% correct
-    ambiguous: 26/74 = 35.1% correct
+magicmaus single call    = 119/192 = 62.0% correct
+    unique   : 44/44 = 100.0% correct
+    scored   : 42/66 = 63.6% correct
+    ambiguous: 33/82 = 40.2% correct
 ```
 
 ### Head-to-head (same MBP inputs)
@@ -142,22 +148,23 @@ magicmaus single call    = 121/192 = 63.0% correct
 | | single-answer correct | truth-in-envelope | note |
 |---|---|---|---|
 | **MAGIC** alone | 15.1 % | — (no envelope) | commits to all, 84.9 % error, ~279 s |
-| **MAUS** alone  | 51/192 decisive, rest abstain | **100 %** | never wrong, but no call on degeneracy |
-| **magicmaus**   | **63.0 %** | **100 %** | commits on all 192 *and* keeps the envelope, ~0.26 s |
+| **MAUS** alone  | 44/192 decisive, rest abstain | **100 %** | never wrong, but no call on degeneracy |
+| **magicmaus**   | **62.0 %** | **100 %** | commits on all 192 *and* keeps the envelope, ~0.3 s |
 
-magicmaus turns MAUS's 141 abstentions into 70 additional committed correct
+magicmaus turns MAUS's 148 abstentions into 75 additional committed correct
 calls **without giving up the 100 % never-exclude guarantee**, and it multiplies
-MAGIC's single-answer accuracy 4× (15 % → 63 %) at ~1000× the speed — because the
-scored search runs only over the truth-containing MAUS domains.
+MAGIC's single-answer accuracy 4× (15 % → 62 %) — because the scored search runs
+only over the truth-containing MAUS domains. (This is the boolean network; real
+NOESY intensities lift it to 87 %, below.)
 
 ### Levers
 
 | variant | single-answer correct | why |
 |---|---|---|
-| default (`--tol-c 0.05`) | 63.0 % | firm, hard-consistent boolean NOE only |
+| default (`--tol-c 0.05`) | 62.0 % | firm, hard-consistent boolean NOE only |
 | `--soft-ambiguous`       | 67.2 % | reuses the ambiguous NOEs MAUS throws away |
-| tighter `--tol-c 0.02`   | 81.2 % | sharper NOE matching → more unique peaks |
-| +24 tentative anchors    | 70.8 % | anchors propagate through **both** layers |
+| tighter `--tol-c 0.02`   | 79.2 % | sharper NOE matching → more unique peaks |
+| +24 tentative anchors    | 71.4 % | anchors propagate through **both** layers |
 
 On the **boolean** simulated NOESY the residual coin-flip tier is dominated by
 **geminal methyl pairs** (Leu δ1/δ2, Val γ1/γ2) and shift-degenerate peaks —
@@ -181,13 +188,16 @@ python magicmaus.py examples/mbp/1ANF.pdb examples/mbp/hmqc.tsv mbp_noesy_intens
 
 | NOESY | single-answer correct | scored-tier correct |
 |---|---|---|
-| boolean (no intensity)          | 63.0 % | 65.7 % |
-| + real intensities              | 72.9 % | 79.7 % |
-| + intensities `--soft-ambiguous`| **79.7 %** | **85.8 %** |
+| boolean (no intensity)          | 62.0 % | 63.6 % |
+| + real intensities              | 87.0 % | 92.3 % |
+| + intensities `--soft-ambiguous`| **87.5 %** | **92.6 %** |
 
-Feeding intensities lifts accuracy 63 % → 80 % **with the envelope still at
+Feeding intensities lifts accuracy 62 % → 87 % **with the envelope still at
 100 %** — the scoring layer, idle on boolean data, does real work once the data
-carry information, precisely as `../maus/COMPARISON.md` predicted.
+carry information, precisely as `../maus/COMPARISON.md` predicted. magicmaus
+detects the flat boolean network and holds back the annealer there (it would only
+overfit to structural-contact density), then unleashes it once intensities pin
+each NOE to its true distance.
 
 ### Fair three-way, *all three engines on the same intensity NOESY*
 
@@ -199,8 +209,8 @@ structure and NOE peaks (`score_three.py` reproduces the table):
 |---|---|---|---|
 | **MAGIC** (scoring, uses intensity) | 5.7 % | 10.4 % | — (no envelope) |
 | **MAUS** (SAT, *ignores* intensity) | 26.6 % unique, rest abstain | — | **100 %** |
-| **magicmaus**                       | 72.9 % | 79.2 % | **100 %** |
-| **magicmaus** `--soft-ambiguous`    | **79.7 %** | **85.4 %** | **100 %** |
+| **magicmaus**                       | 87.0 % | 90.1 % | **100 %** |
+| **magicmaus** `--soft-ambiguous`    | **87.5 %** | **89.6 %** | **100 %** |
 
 Two facts the shared network makes plain:
 
@@ -213,7 +223,7 @@ Two facts the shared network makes plain:
   to a residue-level answer that cannot even resolve geminal pairs.
 
 magicmaus runs the *same* intensity-weighted scoring MAGIC uses, but only inside
-MAUS's truth-containing domains — and lands **13× MAGIC's methyl accuracy while
+MAUS's truth-containing domains — and lands **15× MAGIC's methyl accuracy while
 keeping MAUS's 100 % envelope**. That is the synthesis paying off: MAUS keeps the
 truth in reach, MAGIC's scoring then extracts every bit of experimental signal to
 commit correctly within it. Neither half delivers this alone.
@@ -232,25 +242,30 @@ methyl deposit) via `make_peaklists.py --shifts-tsv`.
 
 | target | BMRB / PDB | methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | envelope |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| Ubiquitin | 6457 / 1UBQ | 43 | 9.3 % | 34.9 % | **100 %** | 90.7 % | 90.7 % | **100 %** |
-| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 8.5 % | 88.1 % | 89.8 % | 89.8 % | **100 %** |
-| HNH  | 27949 / 6O56 | 57 | 12.3 % | 26.3 % | 73.7 % | 57.9 % | 64.9 % | **100 %** |
-| REC2 | 28105 / 4CMP | 63 | n.c. | 12.7 % | 74.6 % | 76.2 % | 82.5 % | **100 %** |
-| REC3 | 28110 / 4ZT0 | 85 | n.c. | 8.2 % | 32.9 % | 28.2 % | 45.9 % | **100 %** |
-| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 26.6 % | 72.9 % | 79.7 % | 89.1 % | **100 %** |
-| MSG  | SI / 1D8C    | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
+| Ubiquitin | 6457 / 1UBQ | 43 | 9.3 % | 34.9 % | **100 %** | 100.0 % | 100.0 % | **100 %** |
+| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 8.5 % | 88.1 % | 96.6 % | 96.6 % | **100 %** |
+| HNH  | 27949 / 6O56 | 57 | 12.3 % | 26.3 % | 82.5 % | 86.0 % | 86.0 % | **100 %** |
+| REC2 | 28105 / 4CMP | 63 | n.c. | 12.7 % | 88.9 % | 90.5 % | 76.2 % | **100 %** |
+| REC3 | 28110 / 4ZT0 | 85 | n.c. | 8.2 % | 60.0 % | 57.6 % | 52.9 % | **100 %** |
+| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 26.6 % | 87.0 % | 87.5 % | 93.2 % | **100 %** |
+| MSG  | SI / 1D8C    | 257 | n.c. | 1.6 % | 26.5 % | 31.1 % | 41.6 % | **100 %** |
 
 MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
 the rest — its coverage is the envelope column. The **100 % envelope holds on
-every target**, and magicmaus beats full-space
-MAGIC by up to ~10×. `+soft-ambiguous` helps on the sparser targets but not on the
-Leu-dense ones (HNH, REC3), so it is opt-in. `+HMBC` adds an optional geminal-link
-experiment (`--hmbc`) on top of +soft; it lifts accuracy on every target, most
-where degeneracy is worst (REC3 28→46 %, MBP 80→89 %). MAGIC did not converge
-(`n.c.`) within a 15-min budget on the two Leu-dense Cas9 domains — the scaling
-cost of scoring the full space. REC3 (50/85 Leu) is the hard case: an achiral NOE
-network cannot resolve that much geminal/shift degeneracy without HMBC, and
-magicmaus reports the residual as `ambiguous` option sets rather than guessing.
+every target**, and magicmaus beats full-space MAGIC by up to ~15× (MBP 87 % vs
+5.7 %). The 3-cycle annealer is what closes the gap: on the intensity network the
+objective's global optimum *is* the truth (a truth-seeded search scores ~96 %),
+and the annealer reaches it where a plain greedy ascent stalls ~10–20 % short.
+`+soft-ambiguous` helps on most targets (IL-2 88→97 %, HNH 82→86 %) but is a wash
+on the Leu-densest ones (REC3), so it is opt-in. `+HMBC` (an optional geminal-link
+experiment, `--hmbc`, on top of +soft) helps where geminal pairs dominate the
+residual (MBP 87→93 %) but *hurts* where the degeneracy is symmetric rather than
+geminal (REC2, REC3): the extra hard links reshape the landscape into a different
+equal-scoring optimum, so it too is opt-in. MAGIC did not converge (`n.c.`) within
+a 15-min budget on the two Leu-dense Cas9 domains — the scaling cost of scoring the
+full space. REC3 (50/85 Leu) is the hard case: an achiral NOE network cannot
+resolve that much geminal/shift degeneracy, and magicmaus reports the residual as
+`ambiguous` option sets rather than guessing.
 
 Regenerate any target (e.g. IL-2):
 

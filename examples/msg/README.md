@@ -43,14 +43,19 @@ python msg_run.py
 |---|---|---|
 | MAGIC (scoring) | did not converge (>15 min) | — |
 | MAUS (unique only, rest abstain) | 1.6% | 100.0% |
-| magicmaus | 29.6% | 100.0% |
-| magicmaus +soft-ambiguous | 33.5% | 100.0% |
-| magicmaus +soft +HMBC | 38.5% | 100.0% |
+| magicmaus | 26.5% | 100.0% |
+| magicmaus +soft-ambiguous | 31.1% | 100.0% |
+| magicmaus +soft +HMBC | 41.6% | 100.0% |
 
 MSG is the hard case of the suite: only 262 of its 3D (H)CCH cross peaks resolve
 to a firm NOE (carbon-only partner matching is highly degenerate), so 95 of 257
 peaks carry no firm constraint and the true option sets are large. The
 never-exclude envelope still holds at 100%, and magicmaus commits on every peak
-where full-space MAGIC does not even converge. The enumeration is compute-heavy
-at this scale (weak constraints + 133-Leu symmetry); `msg_run.py` reuses a single
-option-set enumeration for the plain and +soft calls to keep it practical.
+where full-space MAGIC does not even converge. This is also the one target where
+the scoring objective breaks down: with so few firm constraints its global optimum
+is no longer the truth, so the annealer's extra objective-climbing does not pay off
+here as it does on the smaller targets — only the HMBC geminal links (`--hmbc`),
+which shrink the option sets directly, lift accuracy (to 41.6%). The enumeration is
+compute-heavy at this scale (weak constraints + 133-Leu symmetry); `msg_run.py`
+reuses a single option-set enumeration for the plain and +soft calls to keep it
+practical.
