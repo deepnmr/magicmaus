@@ -12,7 +12,9 @@ A short write-up in *Bioinformatics* Application Note form is in
 **New here?** Start with the **[8-methyl dummy tutorial](TUTORIAL.md)**
 ([PDF](TUTORIAL.pdf)) for the mechanics, then the **[maltose-binding protein
 tutorial](TUTORIAL_MBP.md)** ([PDF](TUTORIAL_MBP.pdf)) for the real 192-methyl
-run and the three-way comparison against MAGIC and MAUS.
+run and the three-way comparison against MAGIC and MAUS. For the full
+five-protein benchmark, see [**Benchmark**](#benchmark--five-real-bmrb-targets)
+below and [`examples/*/README.md`](examples/).
 
 Same problem — assign methyl ¹H/¹³C HMQC peaks to the methyls of a known
 structure using NOESY contacts. Two opposite philosophies:
@@ -216,7 +218,60 @@ keeping MAUS's 100 % envelope**. That is the synthesis paying off: MAUS keeps th
 truth in reach, MAGIC's scoring then extracts every bit of experimental signal to
 commit correctly within it. Neither half delivers this alone.
 
+## Benchmark — five real BMRB targets
+
+MBP is not a one-off. `make_peaklists.py` builds a dataset from any PDB + BMRB
+deposition (see [`examples/*/README.md`](examples/)); `bench.py` scores MAUS and
+magicmaus, `convert_to_magic.py` adds MAGIC. Beyond MBP we ship the four de-novo
+blind targets of the MAUS paper (Nerli *et al.* 2021, Table 1): interleukin-2 and
+the HNH, REC2 and REC3 domains of Cas9.
+
+| target | BMRB / PDB | methyls | MAGIC | magicmaus | +soft | +HMBC | envelope |
+|---|---|---:|---:|---:|---:|---:|---:|
+| IL-2 | 28104 / 1M47 | 59 | 8.5 % | 88.1 % | 89.8 % | 89.8 % | **100 %** |
+| HNH  | 27949 / 6O56 | 57 | 12.3 % | 73.7 % | 57.9 % | 64.9 % | **100 %** |
+| REC2 | 28105 / 4CMP | 63 | n.c. | 74.6 % | 76.2 % | 82.5 % | **100 %** |
+| REC3 | 28110 / 4ZT0 | 85 | n.c. | 32.9 % | 28.2 % | 45.9 % | **100 %** |
+| MBP  | 7114 / 1ANF  | 192 | 5.7 % | 72.9 % | 79.7 % | 89.1 % | **100 %** |
+
+The **100 % envelope holds on every target**, and magicmaus beats full-space
+MAGIC by up to ~10×. `+soft-ambiguous` helps on the sparser targets but not on the
+Leu-dense ones (HNH, REC3), so it is opt-in. `+HMBC` adds an optional geminal-link
+experiment (`--hmbc`) on top of +soft; it lifts accuracy on every target, most
+where degeneracy is worst (REC3 28→46 %, MBP 80→89 %). MAGIC did not converge
+(`n.c.`) within a 15-min budget on the two Leu-dense Cas9 domains — the scaling
+cost of scoring the full space. REC3 (50/85 Leu) is the hard case: an achiral NOE
+network cannot resolve that much geminal/shift degeneracy without HMBC, and
+magicmaus reports the residual as `ambiguous` option sets rather than guessing.
+
+Regenerate any target (e.g. IL-2):
+
+```bash
+python make_peaklists.py examples/il2/1M47.pdb BMRB28104.str --out-dir examples/il2
+python make_intensity_noesy.py examples/il2/1M47.pdb examples/il2/hmqc_true.tsv \
+    examples/il2/noesy.tsv examples/il2/noesy_intensity.tsv
+python bench.py examples/il2 examples/il2/1M47.pdb
+```
+
 ## Files
+
+```
+magicmaus.py             the hybrid engine (MAUS SAT bound + MAGIC scored commit)
+maus.py                  vendored MAUS clean-room SAT layer (== ../maus/maus.py)
+make_peaklists.py        build hmqc/noesy peak lists from a PDB + BMRB deposition
+make_intensity_noesy.py  reconstruct 1/r^6 intensities for a simulated NOESY
+convert_to_magic.py      re-emit a dataset as a MAGIC control bundle (fair compare)
+bench.py                 MAUS + magicmaus (+MAGIC) on one example dir
+score_three.py           MAGIC vs MAUS vs magicmaus on the MBP intensity NOESY
+examples/mbp/            MBP dataset (BMRB 7114 shifts + PDB 1ANF)
+examples/{il2,hnh,rec2,rec3}/   MAUS-paper blind targets (BMRB + PDB)
+```
+
+Each `examples/<target>/` is self-contained: the PDB, the BMRB deposition
+(`bmr<id>.str`), the generated peak lists (`hmqc*.tsv`, `noesy*.tsv`, `hmbc.tsv`),
+the committed magicmaus output (`magicmaus_calls.tsv`), the MAGIC output
+(`magic_assignments.tsv`, where MAGIC converged), and a `README.md` with the exact
+regenerate/benchmark commands.
 
 ```
 magicmaus.py             the hybrid engine (MAUS SAT bound + MAGIC scored commit)

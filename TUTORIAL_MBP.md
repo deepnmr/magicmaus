@@ -199,3 +199,13 @@ On data without a truth key, drop `--truth` and read `mbp_calls.tsv`:
 The one invariant across every setting above: **the true methyl is never dropped
 from a peak's option set.** magicmaus commits when it can and abstains — visibly —
 when it cannot.
+
+## 7. Beyond MBP — the five-protein benchmark
+
+MBP is one of five targets. `make_peaklists.py` builds the same peak lists from
+any PDB + BMRB deposition, so the four de-novo blind targets of the MAUS paper
+(IL-2 and the Cas9 HNH/REC2/REC3 domains) drop straight in — see
+[`../README.md#benchmark--five-real-bmrb-targets`](../README.md) and each
+`examples/<target>/README.md`. Across all five the **100 % never-exclude envelope
+holds**, and magicmaus beats full-space MAGIC by up to ~10× while committing on
+every peak.
