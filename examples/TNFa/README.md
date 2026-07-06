@@ -114,11 +114,14 @@ from the tag-free `ILVAT`):
 - `I` = ¹³C **< 17 ppm** — Ile δ1 is the only methyl that low (Ile 12.8–15.8;
   every other type ≥ 18.3), a clean shift separator that the Thr sample's ¹³C
   window would otherwise clip
-- **geminal link (2D HMBC)** — a peak with a geminal partner (reciprocal HMBC
-  correlation to another peak's carbon) is Leu or Val; a single methyl (no
-  partner) is Ile/Ala/Thr. This separates the paired from the single-methyl
-  types and lets `V` propagate across the link: if a peak's geminal partner is
-  in `Val_Methyl`, so is it.
+- **geminal link (3D HMBC)** — the 3D HMBC-HMQC (`C, C, H`) carries both methyl
+  carbons and the proton, so the observed methyl is pinned unambiguously by
+  `(C,H)` and the other carbon is its geminal partner (far cleaner than a 2D
+  `(C_partner, H)` list). A peak with a geminal partner is Leu or Val; a single
+  methyl (no partner) is Ile/Ala/Thr. This separates the paired from the
+  single-methyl types and lets `V` propagate across the link: if a peak's geminal
+  partner is in `Val_Methyl`, so is it (recovers Val the low-SNR `Val_Methyl`
+  detects on only one of the pair).
 - `V` = in `Val_Methyl` (directly or via its geminal partner)
 - `L` = geminal, not Val · `T` = single, in `Thr_Methyl` · `A` = single, in
   `ILVAT` only
@@ -131,19 +134,19 @@ over-capacity instance) — if a type has more peaks than methyls.
 
 | stage | outcome |
 |---|---|
-| ILVAT peaks picked → typed (capped) | 85 peaks; **80/85** true peaks recovered |
-| type correct | **73/80 = 91%** (Ile 8/8 by shift; geminal fixes single-vs-paired confusions) |
-| NOESY cross peaks | top 80 by height (~16 resolve to firm constraints) |
-| **MAUS envelope** | **70/80 = 87.5%** truth-in-option-set |
+| ILVAT peaks picked → typed (capped) | 87 peaks; **80/85** true peaks recovered |
+| type correct | **73/80 = 91%** (Ile 8/8 by shift; 3D-HMBC geminal fills Val to 26/26) |
+| NOESY cross peaks | top 80 by height (~13 resolve to firm constraints) |
+| **MAUS envelope** | **74/80 = 92.5%** truth-in-option-set |
 | **magicmaus committed** | single-digit % (NOESY-noise-limited, see below) |
 
-The residual type errors are Val peaks that `Val_Methyl` never detects and whose
-geminal partner it also misses (V1γ1/γ2, V85γ1/γ2) — a sensitivity limit of that
-spectrum, not of the typing logic.
+The 3D HMBC geminal link fills the Val type to its full 26/26 (each Val whose
+partner the low-SNR `Val_Methyl` catches is propagated), lifting the envelope
+from 87.5% (2D HMBC) to **92.5%** — near the curated-`.list` figure of 95.3%.
 
-Shift-based Ile typing plus HMBC geminal linking lifts the type accuracy to 91%
-and the MAUS envelope to 87.5% (from 77.5% with the first, cruder typing). The
-committed call stays single-digit, capped by the NOESY: an auto-picked,
+Shift-based Ile typing plus 3D-HMBC geminal linking lifts the type accuracy to
+91% and the MAUS envelope to 92.5% (from 77.5% with the first, cruder typing).
+The committed call stays single-digit, capped by the NOESY: an auto-picked,
 boolean-ish (H)CCH network with raw peak heights gives the scoring layer little
 to grade, and picking noise makes the SAT **UNSAT** once ~16 cross peaks resolve
 to firm hard constraints (so the NOESY is held to its top 80). This is the honest

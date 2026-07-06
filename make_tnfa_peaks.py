@@ -106,23 +106,27 @@ def matches(peak, plist, tol_c=0.10, tol_h=0.02):
   return any(abs(c - pc) <= tol_c and abs(h - ph) <= tol_h for pc, ph, _ in plist)
 
 
-def geminal_partners(ilvat, hmbc, tol_c=0.30, tol_h=0.02):
-  """For each master peak, find its geminal partner via the 2D HMBC (each HMBC
-  peak = (partner_carbon, observed_proton)).  A pair (A,B) is geminal only if
-  BOTH reciprocal correlations exist — HMBC near (Cb,Ha) and near (Ca,Hb) — which
-  rejects the spurious one-directional links.  Only Leu/Val pair; Ile/Ala/Thr
-  (single methyl) return None.  Returns {index -> partner index}."""
-  def has(cq, hq):
-    return any(abs(cp - cq) <= tol_c and abs(hp - hq) <= tol_h for cp, hp, _ in hmbc)
-  part = {}
-  for ai, (ca, ha, _) in enumerate(ilvat):
-    found, bestd = None, 1e9
-    for bi, (cb, hb, _) in enumerate(ilvat):
-      if bi == ai or abs(cb - ca) < 0.3:
+def geminal_partners(ilvat, hmbc3d, tol_c=0.15, tol_h=0.02):
+  """Find each master peak's geminal partner via the 3D HMBC (peaks = (C_a, C_b,
+  H)).  Both carbons and the proton are present, so the observed methyl is pinned
+  unambiguously by (C,H) — cleaner than a 2D (C_partner,H) list.  For an
+  off-diagonal HMBC peak the axis whose (C,H) uniquely matches an HMQC peak is the
+  observed methyl; the other carbon is its geminal partner.  Only Leu/Val pair;
+  Ile/Ala/Thr (single methyl) return None.  Returns {index -> partner index}."""
+  part = {i: None for i in range(len(ilvat))}
+  for (c0, c1, h, _) in hmbc3d:
+    if abs(c0 - c1) < 0.3:                      # diagonal (methyl to itself)
+      continue
+    for cobs, cpar in ((c0, c1), (c1, c0)):
+      obs = [i for i, (ca, ha, _) in enumerate(ilvat)
+             if abs(ca - cobs) <= tol_c and abs(ha - h) <= tol_h]
+      if len(obs) != 1:
         continue
-      if has(cb, ha) and has(ca, hb) and abs(cb - ca) < bestd:
-        found, bestd = bi, abs(cb - ca)
-    part[ai] = found
+      cand = [j for j, (cb, _, _) in enumerate(ilvat)
+              if j != obs[0] and abs(cb - cpar) <= tol_c
+              and abs(cb - ilvat[obs[0]][0]) > 0.3]
+      if cand:
+        part[obs[0]] = min(cand, key=lambda j: abs(ilvat[j][0] - cpar))
   return part
 
 
@@ -161,10 +165,10 @@ def main():
   ilv = pick(D / 'TNFa_ILV_13C_HMQC.ucsf', kk['ILV'])
   val = pick(D / 'TNFa_Val_Methyl_HMQC.ucsf', kk['Val'])
   thr = pick(D / 'TNFa_Thr_Methyl_HMQC.ucsf', kk['Thr'])
-  hmbc = pick(D / 'TNFa_HMBC_HMQC_13C_2D.ucsf', 8)
+  hmbc = pick_3d(D / 'TNFa_ILVAT_HMBC_HMQC.ucsf', 30)
   part = geminal_partners(ilvat, hmbc)
   print(f'picked: ILVAT={len(ilvat)} ILV={len(ilv)} Val={len(val)} Thr={len(thr)} '
-        f'HMBC={len(hmbc)} geminal-linked={sum(1 for v in part.values() if v is not None)}')
+        f'HMBC3D={len(hmbc)} geminal-linked={sum(1 for v in part.values() if v is not None)}')
 
   # Ile delta1 is the only methyl with 13C below ~17 ppm (Ile 12.8-15.8;
   # every other type >= 18.3), so type it by chemical shift, not the Thr sample
