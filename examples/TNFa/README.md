@@ -93,6 +93,50 @@ MAGIC assigns **2/85 = 2.4%** methyls (residue-level 5.9%) — full-space scorin
 over a near-flat real-data landscape, the same regime it hits on the simulated
 targets.
 
+## From raw spectra — the fully-automatic pipeline
+
+Everything above starts from the *assigned* Sparky `.list` files. A separate,
+harder track starts from the raw **`.ucsf` spectra** (not committed — ~1.3 GB;
+`*.ucsf` is git-ignored) and does peak-picking + typing + assignment with no
+human input, via `ucsf.py` (a numpy-only UCSF reader), `make_tnfa_peaks.py`, and
+`run_tnfa_picked.py`:
+
+```bash
+python make_tnfa_peaks.py     # pick + type -> hmqc_picked.tsv, noesy_picked.tsv
+python run_tnfa_picked.py     # magicmaus + score vs the known answer by ppm
+```
+
+**Typing by label-selective spectra.** The `ILVAT` HMQC is the tag-free master
+list; the type-selective HMQCs assign a residue type to each peak and remove tag
+peaks (present in `Val`/`Thr` samples, which carry an N-terminal tag, but absent
+from the tag-free `ILVAT`):
+
+- `V` = master peak matched in `Val_Methyl`
+- `I` = matched in `ILV` **and** `Thr_Methyl` (Thr sample is T,I-labeled)
+- `L` = matched in `ILV` only · `T` = in `Thr_Methyl` not `ILV` · `A` = in `ILVAT` only
+
+Each type is then capped to its structural methyl count (e.g. ≤36 Leu), because
+the injective SAT is infeasible — and the C solver hangs — if a type has more
+peaks than methyls.
+
+**Result (committed answer scored against the known assignment by ppm):**
+
+| stage | outcome |
+|---|---|
+| ILVAT peaks picked → typed (capped) | 75 peaks; **71/85** true peaks recovered |
+| type correct | **58/71 = 82%** (Ile under-typed: low-δ1 Ile falls outside the Thr sample's ¹³C window) |
+| NOESY cross peaks | top 80 by height (15 resolve to firm constraints) |
+| **MAUS envelope** | **55/71 = 77.5%** truth-in-option-set |
+| **magicmaus committed** | **~3%** methyl-level |
+
+The envelope survives fully-automatic input, but the committed call collapses to
+near-random: an auto-picked, boolean-ish (H)CCH NOESY with raw peak heights gives
+the scoring layer almost nothing to grade, and picking noise makes the SAT
+**UNSAT** above ~15 firm NOE edges (so the NOESY must be capped low). This is the
+honest limit of end-to-end automation on this dataset — essentially the
+MAUS-alone regime (a bounded envelope, no reliable commitment) — versus the
+assigned-`.list` track above, where curated peaks let the scoring layer commit.
+
 ## What the numbers mean
 
 - **The 100% guarantee is conditional.** MAUS never excludes the truth *when the
