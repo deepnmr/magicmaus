@@ -76,6 +76,33 @@ three-engine benchmark as the other targets:
 python bench.py examples/TNFa examples/TNFa/fold_tnfa_trimer_model_0.cif
 ```
 
+## NOESY symmetry — a 100% envelope
+
+A 3D (H)CCH NOESY row `(C1_partner, C2_obs, H2_obs)` gives the partner **only by
+carbon**, so the standard carbon-only match keeps a few wrong firm edges and the
+envelope stalls at 93% (6 truths excluded). But the reciprocal row
+`(C2_partner, C1_obs, H1_obs)` supplies the partner's **proton**: pairing the two
+resolves both endpoints by full `(C,H)`, so every edge is a correct methyl–methyl
+contact. `run_tnfa_symmetric.py` builds those edges (plus the given HMBC geminal
+links and the carbon-only ambiguous rows as soft evidence):
+
+```bash
+python run_tnfa_symmetric.py
+```
+
+```
+symmetric NOE edges = 43   HMBC gem-links = 1
+MAUS envelope (assignment) = 85/85 = 100.0%
+committed methyl = 5/85 = 5.9%   residue = 10.6%
+```
+
+The symmetric edges lift the never-exclude **envelope to a perfect 100%** — the
+truth is in every peak's option set. The trade-off is the single committed call:
+symmetric edges are all correct but fewer (43 vs 57), so they prune no peak to a
+singleton and the commitment stays low. For the highest committed call instead,
+the carbon-only `--soft-ambiguous` run above (33% methyl / 46% residue) is better;
+the two are the opposite ends of the envelope-vs-commitment trade.
+
 ## MAGIC (sibling engine)
 
 MAGIC has no multimer support, so it is run on a single protomer. `tnfa_protomer.pdb`
