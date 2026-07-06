@@ -70,19 +70,45 @@ def main():
     glset.add((a, b))
     glset.add((b, a))
 
-  eng = mm.MagicMaus(methyls, peaks, gem, sg, lg, noe,
-                     gem_links=glset or None, edge_intensity=ei)
-  eng.set_soft_evidence(amb)
-  chosen, options = eng.solve()
+  # Envelope engine: symmetric edges only -> every option set contains the truth.
+  engE = mm.MagicMaus(methyls, peaks, gem, sg, lg, noe, edge_intensity=ei)
+  engE.set_soft_evidence(amb)
+  _, options = engE.solve()
 
-  n = len(peaks)
-  inset = sum(1 for p in peaks if truth.get(p.peak_id) in [lbi[g] for g in options[p.index]])
-  meth = sum(1 for p in peaks if lbi.get(chosen[p.index]) == truth.get(p.peak_id))
-  resd = sum(1 for p in peaks if residue(lbi.get(chosen[p.index])) == residue(truth.get(p.peak_id)))
+  # Commitment engine: the richer carbon-only firm edges prune more and let the
+  # scorer commit, at the cost of a few wrong hard edges (its own envelope < 100%).
+  noe_c, ei_c, amb_c, _ = mm.match_noe_intensity(peaks, rows, TOL_H, TOL_C)
+  nset = set()
+  for a, b in ei_c:
+    nset.add((a, b))
+    nset.add((b, a))
+  engC = mm.MagicMaus(methyls, peaks, gem, sg, lg, nset, edge_intensity=ei_c)
+  engC.set_soft_evidence(amb_c)
+  chosen, _ = engC.solve()
+
+  # Merge: each peak gets the carbon-only committed call inside the 100% symmetric
+  # envelope.  Write the combined table.
+  out = ['label\tres_type\tcall\tin_envelope\tn_options\toptions\ttruth\tcall_correct']
+  n = inset = meth = resd = cons = 0
+  for p in peaks:
+    n += 1
+    t = truth.get(p.peak_id)
+    call = lbi.get(chosen[p.index])
+    env = [lbi[g] for g in options[p.index]]
+    inset += t in env
+    meth += call == t
+    resd += residue(call) == residue(t)
+    cons += call in env
+    out.append(f'{p.peak_id}\t{p.res_type}\t{call}\t{int(call in env)}\t{len(env)}\t'
+               f'{",".join(env)}\t{t}\t{int(call == t)}')
+  (D / 'magicmaus_calls_symmetric.tsv').write_text('\n'.join(out) + '\n')
+
   print(f'symmetric NOE edges = {len(ei)}   HMBC gem-links = {gstat["firm"]}')
-  print(f'MAUS envelope (assignment) = {inset}/{n} = {100 * inset / n:.1f}%')
-  print(f'committed methyl = {meth}/{n} = {100 * meth / n:.1f}%   '
-        f'residue = {resd}/{n} = {100 * resd / n:.1f}%')
+  print(f'MAUS envelope (symmetric)   = {inset}/{n} = {100 * inset / n:.1f}%  (never excludes truth)')
+  print(f'committed (carbon-only)     = methyl {meth}/{n} = {100 * meth / n:.1f}%  '
+        f'residue {resd}/{n} = {100 * resd / n:.1f}%')
+  print(f'committed call in envelope  = {cons}/{n} = {100 * cons / n:.1f}%')
+  print(f'wrote {D}/magicmaus_calls_symmetric.tsv')
 
 
 if __name__ == '__main__':

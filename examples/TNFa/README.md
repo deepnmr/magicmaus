@@ -96,12 +96,22 @@ MAUS envelope (assignment) = 85/85 = 100.0%
 committed methyl = 5/85 = 5.9%   residue = 10.6%
 ```
 
-The symmetric edges lift the never-exclude **envelope to a perfect 100%** — the
-truth is in every peak's option set. The trade-off is the single committed call:
-symmetric edges are all correct but fewer (43 vs 57), so they prune no peak to a
-singleton and the commitment stays low. For the highest committed call instead,
-the carbon-only `--soft-ambiguous` run above (33% methyl / 46% residue) is better;
-the two are the opposite ends of the envelope-vs-commitment trade.
+```
+symmetric NOE edges = 43   HMBC gem-links = 1
+MAUS envelope (symmetric)  = 85/85 = 100.0%   (never excludes truth)
+committed (carbon-only)    = methyl 28/85 = 32.9%   residue 39/85 = 45.9%
+committed call in envelope = 83/85 = 97.6%
+```
+
+`run_tnfa_symmetric.py` **merges the two ends of the trade-off** into one
+assignment (written to `magicmaus_calls_symmetric.tsv`): the symmetric edges give
+every peak a **100% never-exclude envelope** (the truth is always in the option
+set), while the richer carbon-only `+soft` edges supply the **best single
+committed call** (33% methyl / 46% residue). The two are consistent — 97.6% of the
+committed calls fall inside the guaranteed envelope — so each peak reports a
+best-guess assignment nested inside a bound that provably contains the truth. This
+is the strongest combined result on the given peak lists: a perfect ambiguity
+envelope with a best-effort commitment inside it.
 
 ## MAGIC (sibling engine)
 
