@@ -63,8 +63,11 @@ def _refine(ym, y0, yp):
   return 0.0 if denom == 0 else np.clip(0.5 * (ym - yp) / denom, -0.5, 0.5)
 
 
-def pick_3d(path, k=40.0):
-  """3D local-maxima pick. Returns [(ppm_ax0, ppm_ax1, ppm_ax2, height)]."""
+def pick_3d(path, k=40.0, vol_box=None):
+  """3D local-maxima pick. Returns [(ppm_ax0, ppm_ax1, ppm_ax2, intensity)].
+  intensity = peak height, or the box-integrated **volume** if vol_box=(wc,wh)
+  is given (sum over ±wc points on both carbon axes, ±wh on the proton axis,
+  negatives clipped) — a better NOE-intensity estimate than a single point."""
   data, axes = ucsf.read(path)
   noise = np.median(np.abs(data))
   thr = k * noise
@@ -82,8 +85,15 @@ def pick_3d(path, k=40.0):
   peaks = []
   for (i, j, kk) in idx:
     i, j, kk = i + 1, j + 1, kk + 1
+    if vol_box is None:
+      inten = float(data[i, j, kk])
+    else:
+      wc, wh = vol_box
+      b = data[max(0, i - wc):i + wc + 1, max(0, j - wc):j + wc + 1,
+               max(0, kk - wh):kk + wh + 1]
+      inten = float(b.clip(min=0).sum())
     peaks.append((float(axes[0].ppm(i)), float(axes[1].ppm(j)),
-                  float(axes[2].ppm(kk)), float(data[i, j, kk])))
+                  float(axes[2].ppm(kk)), inten))
   peaks.sort(key=lambda p: -p[3])
   return peaks
 
@@ -93,8 +103,9 @@ def write_noesy(path, k=10.0, tol_c=0.15, out='noesy_picked.tsv'):
   and keep only **symmetric** cross peaks — a real methyl-methyl NOE appears both
   ways, (C1,C2,·) and (C2,C1,·).  This rejects the one-sided picking noise that
   makes the SAT UNSAT, so all symmetric edges can be used (no artificial top-N
-  cap needed) with the never-exclude envelope intact."""
-  pk = [p for p in pick_3d(path, k) if abs(p[0] - p[1]) >= 0.05]
+  cap needed) with the never-exclude envelope intact.  Intensity is the
+  box-integrated volume (better than height for the MAGIC-style scoring)."""
+  pk = [p for p in pick_3d(path, k, vol_box=(3, 1)) if abs(p[0] - p[1]) >= 0.05]
   sym = [(c1, c2, h2, ht) for (c1, c2, h2, ht) in pk
          if any((a, b) != (c1, c2) and abs(c2 - a) <= tol_c and abs(c1 - b) <= tol_c
                 for a, b, _, _ in pk)]

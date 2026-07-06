@@ -137,8 +137,9 @@ over-capacity instance) — if a type has more peaks than methyls.
 | ILVAT peaks picked → typed (capped) | 87 peaks; **80/85** true peaks recovered |
 | type correct | **73/80 = 91%** (Ile 8/8 by shift; 3D-HMBC geminal fills Val to 26/26) |
 | NOESY cross peaks | **symmetric** filter: 226 of 315 (37 resolve to firm constraints) |
+| NOESY intensity | box-integrated **volume** (±3 ¹³C, ±1 ¹H points) |
 | **MAUS envelope** | **74/80 = 92.5%** truth-in-option-set |
-| **magicmaus committed** | single-digit % (intensity-limited, see below) |
+| **magicmaus committed** | **8.8%** methyl-level (11.2% residue-level) |
 
 The 3D HMBC geminal link fills the Val type to its full 26/26 (each Val whose
 partner the low-SNR `Val_Methyl` catches is propagated), lifting the envelope
@@ -153,12 +154,14 @@ top-N cap and the envelope intact.
 Shift-based Ile typing plus 3D-HMBC geminal linking lifts the type accuracy to
 91% and the MAUS envelope to 92.5% (from 77.5% with the first, cruder typing).
 The symmetric NOESY filter removes the SAT fragility (37 firm edges now feasible,
-no arbitrary cap), but the committed call stays single-digit: auto-picked raw peak
-heights are poor intensities, so the MAGIC-style scoring layer cannot rank the
-right methyl within the (correct, 92.5%) option set. This is the honest limit of
-end-to-end automation on this dataset — a strong bounded envelope but weak
-commitment, gated now by intensity quality rather than SAT feasibility — versus
-the assigned-`.list` track above, where curated peaks let the scoring layer commit.
+no arbitrary cap), and box-integrated **volumes** (better NOE-intensity estimates
+than single-point heights) lift the committed call from ~6% to 8.8% methyl /
+11.2% residue. It is still modest: the auto-picked, boolean-ish (H)CCH network is
+sparse and the volumes are noisy, so the MAGIC-style scoring can rank the right
+methyl within the (correct, 92.5%) option set only sometimes. This is the honest
+limit of end-to-end automation on this dataset — a strong bounded envelope, weak
+but non-trivial commitment — versus the assigned-`.list` track above, where
+curated peaks let the scoring layer commit outright.
 
 ## What the numbers mean
 
