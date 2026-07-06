@@ -71,6 +71,23 @@ Or the same three-engine benchmark as the other targets:
 python bench.py examples/TNFa examples/TNFa/fold_tnfa_trimer_model_0.cif
 ```
 
+## MAGIC (sibling engine)
+
+MAGIC has no multimer support, so it is run on a single protomer. `tnfa_protomer.pdb`
+is chain 1 of the AlphaFold model in PDB format; `convert_to_magic.py` builds the
+control bundle and `../magic/` scores it (committed result: `magic_assignments.tsv`):
+
+```bash
+python convert_to_magic.py examples/TNFa/hmqc.tsv examples/TNFa/noesy_intensity.tsv \
+    examples/TNFa/tnfa_protomer.pdb magic_run_tnfa/
+# edit LABELING to AILTV (no Met), then from ../magic/:
+python -m magic run ../magicmaus/magic_run_tnfa/control.txt --output-dir out
+```
+
+MAGIC assigns **5/85 = 5.9%** methyls (residue-level 8.2%) — full-space scoring
+over a near-flat real-data landscape, the same regime it hits on the simulated
+targets.
+
 ## What the numbers mean
 
 Two honest facts real data exposes that the simulated targets cannot:

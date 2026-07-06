@@ -250,7 +250,7 @@ methyl deposit) via `make_peaklists.py --shifts-tsv`.
 | REC3 | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2 % | 60.0 % | 57.6 % | 52.9 % | **100 %** |
 | MBP  | 7114 / 1ANF  | AILMTV | 192 | 5.7 % | 26.6 % | 87.0 % | 87.5 % | 93.2 % | **100 %** |
 | MSG  | SI / 1D8C    | ILV | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
-| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | — | 7.1 % | 30.6 % | 28.2 % | n.r. | 92.9 % |
+| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | 5.9 % | 7.1 % | 30.6 % | 28.2 % | n.r. | 92.9 % |
 
 † **TNF-α is the one real-experimental, multimeric target** — genuine methyl-NMR
 peak lists of the tumour-necrosis-factor-α homotrimer against an AlphaFold3

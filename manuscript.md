@@ -260,7 +260,7 @@ n.r. = not recommended (see below).
 | REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
 | MBP | 7114 / 1ANF | AILMTV | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
 | MSG | SI† / 1D8C | ILV | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
-| TNF-α‡ | real / AF3 trimer | AILTV | 85 | — | 7.1% | 30.6% | 28.2% | n.r. | 92.9% |
+| TNF-α‡ | real / AF3 trimer | AILTV | 85 | 5.9% | 7.1% | 30.6% | 28.2% | n.r. | 92.9% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et
@@ -327,6 +327,14 @@ single-methyl, are NOE-poor on MBP.
 | REC3 | 54% (7/13) | 52% (26/50) | 73% (16/22) | — | — | — | 58% (49/85) |
 | MBP | 100% (22/22) | 97% (58/60) | 95% (38/40) | 68% (30/44) | 70% (14/20) | 100% (6/6) | 88% (168/192) |
 | MSG | 44% (18/41) | 32% (42/133) | 31% (26/83) | — | — | — | 33% (86/257) |
+| TNF-α | 100% (8/8) | 6% (2/36) | 27% (7/26) | 50% (6/12) | 33% (1/3) | — | 28% (24/85) |
+
+The real-data TNF-α row makes the type dependence stark: Ile (no geminal partner)
+is again assigned outright (8/8), Ala and Thr are middling on a sparse network,
+but Leu collapses to 6% (2/36) and Val to 27% — the near-flat, boolean-dominated
+(H)CCH intensities cannot orient the geminal pairs, so most Leu/Val calls are the
+`ambiguous` coin flip landing on the wrong δ/γ methyl (they stay inside the MAUS
+envelope; only the intensity signal, weak here, could break the tie).
 
 Resolving the accuracy to the individual prochiral methyl (Table 3) confirms that
 the residual Leu/Val error is a geminal swap rather than random misassignment: on
@@ -356,6 +364,7 @@ target's labeling.
 | REC3 | 54% (7/13) | 52% (13/25) | 52% (13/25) | 73% (8/11) | 73% (8/11) | — | — | — |
 | MBP | 100% (22/22) | 97% (29/30) | 97% (29/30) | 95% (19/20) | 95% (19/20) | 68% (30/44) | 70% (14/20) | 100% (6/6) |
 | MSG | 44% (18/41) | 33% (22/67) | 30% (20/66) | 31% (13/42) | 32% (13/41) | — | — | — |
+| TNF-α | 100% (8/8) | 6% (1/18) | 6% (1/18) | 31% (4/13) | 23% (3/13) | 50% (6/12) | 33% (1/3) | — |
 
 The same geminal-swap lens revises how the MAUS column should be read. MAUS's
 decisive fraction (Table 1, MAUS) counts only peaks pinned to a single *methyl*, so

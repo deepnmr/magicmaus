@@ -64,7 +64,7 @@ arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6
 # --- Panel B: seven-target benchmark (same intensity NOESY) ---
 # (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged, envelope%)
 # TNF-alpha is the one real-experimental / multimer target: envelope 92.9% (not
-# 100), MAGIC not run (real data, no MAGIC control bundle).
+# 100). MAGIC run single-protomer (it has no multimer support): 5.9%.
 DATA = [
   ('Ubq', 43, 9.3, 34.9, 100.0, True, 100.0),
   ('HNH', 57, 12.3, 26.3, 86.0, True, 100.0),
@@ -73,7 +73,7 @@ DATA = [
   ('REC3', 85, None, 8.2, 57.6, False, 100.0),
   ('MBP', 192, 5.7, 26.6, 87.5, True, 100.0),
   ('MSG', 257, None, 1.6, 33.5, False, 100.0),
-  ('TNFα*', 85, None, 7.1, 28.2, False, 92.9),
+  ('TNFα*', 85, 5.9, 7.1, 28.2, True, 92.9),
 ]
 x = range(len(DATA))
 w = 0.26
