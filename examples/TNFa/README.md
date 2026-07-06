@@ -114,9 +114,14 @@ from the tag-free `ILVAT`):
 - `I` = ¹³C **< 17 ppm** — Ile δ1 is the only methyl that low (Ile 12.8–15.8;
   every other type ≥ 18.3), a clean shift separator that the Thr sample's ¹³C
   window would otherwise clip
-- `V` = master peak matched in `Val_Methyl`
-- `L` = matched in `ILV` (not Ile, not Val) · `T` = in `Thr_Methyl` not `ILV` ·
-  `A` = in `ILVAT` only
+- **geminal link (2D HMBC)** — a peak with a geminal partner (reciprocal HMBC
+  correlation to another peak's carbon) is Leu or Val; a single methyl (no
+  partner) is Ile/Ala/Thr. This separates the paired from the single-methyl
+  types and lets `V` propagate across the link: if a peak's geminal partner is
+  in `Val_Methyl`, so is it.
+- `V` = in `Val_Methyl` (directly or via its geminal partner)
+- `L` = geminal, not Val · `T` = single, in `Thr_Methyl` · `A` = single, in
+  `ILVAT` only
 
 Each type is then capped to its structural methyl count (e.g. ≤36 Leu), because
 the injective SAT is infeasible — and the C solver hangs (~30 min on the
@@ -126,17 +131,22 @@ over-capacity instance) — if a type has more peaks than methyls.
 
 | stage | outcome |
 |---|---|
-| ILVAT peaks picked → typed (capped) | 81 peaks; **77/85** true peaks recovered |
-| type correct | **69/77 = 90%** (Ile now 8/8, typed by ¹³C shift) |
-| NOESY cross peaks | top 80 by height (15 resolve to firm constraints) |
-| **MAUS envelope** | **66/77 = 85.7%** truth-in-option-set |
-| **magicmaus committed** | **11.7%** methyl-level (14.3% residue-level) |
+| ILVAT peaks picked → typed (capped) | 85 peaks; **80/85** true peaks recovered |
+| type correct | **73/80 = 91%** (Ile 8/8 by shift; geminal fixes single-vs-paired confusions) |
+| NOESY cross peaks | top 80 by height (~16 resolve to firm constraints) |
+| **MAUS envelope** | **70/80 = 87.5%** truth-in-option-set |
+| **magicmaus committed** | single-digit % (NOESY-noise-limited, see below) |
 
-Clean shift-based typing lifts both the envelope (77.5→85.7%) and the committed
-call (~3→11.7%). The committed accuracy is still low, capped by the NOESY: an
-auto-picked, boolean-ish (H)CCH network with raw peak heights gives the scoring
-layer little to grade, and picking noise makes the SAT **UNSAT** at firm edge 16
-(so the NOESY is held to its top 80 cross peaks, 15 firm). This is the honest
+The residual type errors are Val peaks that `Val_Methyl` never detects and whose
+geminal partner it also misses (V1γ1/γ2, V85γ1/γ2) — a sensitivity limit of that
+spectrum, not of the typing logic.
+
+Shift-based Ile typing plus HMBC geminal linking lifts the type accuracy to 91%
+and the MAUS envelope to 87.5% (from 77.5% with the first, cruder typing). The
+committed call stays single-digit, capped by the NOESY: an auto-picked,
+boolean-ish (H)CCH network with raw peak heights gives the scoring layer little
+to grade, and picking noise makes the SAT **UNSAT** once ~16 cross peaks resolve
+to firm hard constraints (so the NOESY is held to its top 80). This is the honest
 limit of end-to-end automation on this dataset — a strong bounded envelope but
 weak commitment — versus the assigned-`.list` track above, where curated peaks
 let the scoring layer commit.

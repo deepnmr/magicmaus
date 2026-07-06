@@ -106,6 +106,26 @@ def matches(peak, plist, tol_c=0.10, tol_h=0.02):
   return any(abs(c - pc) <= tol_c and abs(h - ph) <= tol_h for pc, ph, _ in plist)
 
 
+def geminal_partners(ilvat, hmbc, tol_c=0.30, tol_h=0.02):
+  """For each master peak, find its geminal partner via the 2D HMBC (each HMBC
+  peak = (partner_carbon, observed_proton)).  A pair (A,B) is geminal only if
+  BOTH reciprocal correlations exist — HMBC near (Cb,Ha) and near (Ca,Hb) — which
+  rejects the spurious one-directional links.  Only Leu/Val pair; Ile/Ala/Thr
+  (single methyl) return None.  Returns {index -> partner index}."""
+  def has(cq, hq):
+    return any(abs(cp - cq) <= tol_c and abs(hp - hq) <= tol_h for cp, hp, _ in hmbc)
+  part = {}
+  for ai, (ca, ha, _) in enumerate(ilvat):
+    found, bestd = None, 1e9
+    for bi, (cb, hb, _) in enumerate(ilvat):
+      if bi == ai or abs(cb - ca) < 0.3:
+        continue
+      if has(cb, ha) and has(ca, hb) and abs(cb - ca) < bestd:
+        found, bestd = bi, abs(cb - ca)
+    part[ai] = found
+  return part
+
+
 def validate(rows):
   """Compare picked+typed peaks to the known truth key by ppm match."""
   truth = []
@@ -133,7 +153,7 @@ def validate(rows):
 
 
 def main():
-  kk = {'ILVAT': 65, 'ILV': 110, 'Val': 9, 'Thr': 10}
+  kk = {'ILVAT': 65, 'ILV': 110, 'Val': 7, 'Thr': 10}
   # cap master list below the structural methyl count (89 in the trimer protomer
   # set) so the injective SAT stays feasible; extra picks are noise/tag.
   CAP = 88
@@ -141,25 +161,36 @@ def main():
   ilv = pick(D / 'TNFa_ILV_13C_HMQC.ucsf', kk['ILV'])
   val = pick(D / 'TNFa_Val_Methyl_HMQC.ucsf', kk['Val'])
   thr = pick(D / 'TNFa_Thr_Methyl_HMQC.ucsf', kk['Thr'])
-  print(f'picked: ILVAT={len(ilvat)} ILV={len(ilv)} Val={len(val)} Thr={len(thr)}')
+  hmbc = pick(D / 'TNFa_HMBC_HMQC_13C_2D.ucsf', 8)
+  part = geminal_partners(ilvat, hmbc)
+  print(f'picked: ILVAT={len(ilvat)} ILV={len(ilv)} Val={len(val)} Thr={len(thr)} '
+        f'HMBC={len(hmbc)} geminal-linked={sum(1 for v in part.values() if v is not None)}')
 
   # Ile delta1 is the only methyl with 13C below ~17 ppm (Ile 12.8-15.8;
   # every other type >= 18.3), so type it by chemical shift, not the Thr sample
   # (whose 13C window clips the low-delta1 Ile).
+  # HMBC geminal link separates the paired types (Leu/Val) from the single-methyl
+  # types (Ile/Ala/Thr): a peak with a geminal partner is L or V; without one it
+  # is I/A/T.  Val is confirmed by the Val sample, and propagated across the
+  # geminal link (if a peak's partner is Val, so is it).
   ILE_C_MAX = 17.0
   rows = []
   counts = {}
-  for pk in ilvat:
+  for i, pk in enumerate(ilvat):
     c13 = pk[0]
+    partner = part[i]
+    is_val = matches(pk, val) or (partner is not None and matches(ilvat[partner], val))
     if c13 < ILE_C_MAX:
       t = 'I'
-    elif matches(pk, val):
+    elif is_val:
       t = 'V'
-    elif matches(pk, ilv):     # ILV, not Ile, not Val -> Leu
+    elif partner is not None:  # geminal pair, not Val -> Leu
       t = 'L'
-    elif matches(pk, thr):     # ILVAT-only matched in Thr sample -> Thr
+    elif matches(pk, thr):     # single methyl in Thr sample -> Thr
       t = 'T'
-    else:                      # ILVAT-only, unmatched -> Ala
+    elif matches(pk, ilv):     # in ILV, no partner picked -> Leu/Val, default Leu
+      t = 'L'
+    else:                      # single, not in ILV -> Ala
       t = 'A'
     counts[t] = counts.get(t, 0) + 1
     rows.append((pk[1], pk[0], t, pk[2]))   # h_ppm, c_ppm, res_type, height
