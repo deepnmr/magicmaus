@@ -240,10 +240,11 @@ than the simulated targets, as expected for a sparse, boolean-dominated (H)CCH
 network — only 37 of 220 cross peaks resolve to a firm constraint at this wide
 tolerance — with raw peak-height intensities scored against a predicted fold. The
 optional HMBC lever is the one experimental input that helps here, lifting the
-committed call from 11.8 to 17.6% by coupling the geminal pairs' NOE evidence; at
-this tolerance the sparse HMBC matches (4 of 69 firm) are clean enough to inform
-rather than over-constrain, unlike the tighter-tolerance regime where a single
-mismatched geminal link can render the SAT infeasible.
+committed call from 11.8 to 17.6% by coupling the geminal pairs' NOE evidence
+(and, at the tighter H±0.01/C±0.05 tolerance, from 28.2 to 29.4% at a 92.9%
+envelope). The HMBC-HMQC geminal peak list is clean enough — reciprocal
+correlations for each Leu/Val pair — that its hard links inform rather than
+over-constrain, never rendering the SAT infeasible.
 
 **Table 1.** Methyl-level accuracy on seven structure-simulated targets plus one
 real-experimental multimer (TNF-α), all engines scored on the same 1/r^6^

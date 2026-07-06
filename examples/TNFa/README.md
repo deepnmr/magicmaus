@@ -178,10 +178,9 @@ outright.
   resolve to a firm constraint at this tolerance, so most peaks land in large
   option sets and the scored/ambiguous calls are near coin flips — 14.1% committed
   (11.8% +soft). The residual is honestly flagged `ambiguous`, not guessed.
-- **HMBC helps here.** `--hmbc` turns each matched HMBC cross peak into a hard
-  geminal link. At this wider tolerance only 4 of 69 rows match firmly, but those
-  matches are clean enough to couple the geminal pairs' NOE evidence, lifting the
-  committed call 11.8 → 17.6% — the one experimental lever that helps on this
-  dataset. (At a tighter tolerance the HMBC matches include a wrong geminal pair
-  and one bad hard link can render the SAT infeasible, so `--hmbc` is
-  tolerance-sensitive, as elsewhere.)
+- **HMBC helps here.** `--hmbc` turns each matched HMBC-HMQC cross peak into a
+  hard geminal link. The (revised, reciprocal) HMBC peak list is clean, so the
+  links couple the geminal pairs' NOE evidence and lift the committed call — from
+  11.8 → 17.6% at H±0.02/C±0.1, and from 28.2 → 29.4% at the tighter H±0.01/C±0.05
+  (92.9% envelope) — the one experimental lever that helps on this dataset,
+  without ever rendering the SAT infeasible.
