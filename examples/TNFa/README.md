@@ -158,10 +158,14 @@ no arbitrary cap), and box-integrated **volumes** (better NOE-intensity estimate
 than single-point heights) lift the committed call from ~6% to 8.8% methyl /
 11.2% residue. It is still modest: the auto-picked, boolean-ish (H)CCH network is
 sparse and the volumes are noisy, so the MAGIC-style scoring can rank the right
-methyl within the (correct, 92.5%) option set only sometimes. This is the honest
-limit of end-to-end automation on this dataset — a strong bounded envelope, weak
-but non-trivial commitment — versus the assigned-`.list` track above, where
-curated peaks let the scoring layer commit outright.
+methyl within the (correct, 92.5%) option set only sometimes. Lowering the pick
+threshold does **not** help — below it the extra "cross peaks" are noise that
+pairs up symmetrically by density alone, so firm edges balloon (37 → 82 → 212)
+and the SAT goes UNSAT again; the genuine NOEs are already all captured at the
+current threshold. This is the honest limit of end-to-end automation on this
+dataset — a strong bounded envelope, weak but non-trivial commitment — versus the
+assigned-`.list` track above, where curated peaks let the scoring layer commit
+outright.
 
 ## What the numbers mean
 
