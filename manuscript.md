@@ -39,13 +39,19 @@ objective and is frequently wrong. We present **magicmaus**, a hybrid that uses
 the satisfiability layer to bound the search to a certifiably truth-containing
 set of per-peak candidates, then applies an intensity-weighted NOE score *within*
 those bounds to commit to a single, globally coherent, injective assignment
-carrying a per-peak confidence tier. Across seven benchmark targets (43–257
-methyls) built from real shifts and structures, magicmaus commits a single
-answer for every peak at 29–100% methyl-level accuracy — up to an order of
-magnitude above the scoring method — while retaining the constraint method's
+carrying a per-peak confidence tier. Across seven structure-simulated benchmark
+targets (43–257 methyls) built from real shifts and structures, magicmaus commits
+a single answer for every peak at 29–100% methyl-level accuracy — up to an order
+of magnitude above the scoring method — while retaining the constraint method's
 100% never-exclude guarantee as an explicit ambiguity envelope. On
 maltose-binding protein (192 methyls) it assigns 87.0% of methyls correctly
-(87.5% with ambiguous-NOE evidence) versus 5.7% for scoring alone.
+(87.5% with ambiguous-NOE evidence) versus 5.7% for scoring alone. A further
+real-experimental multimer (the TNF-α homotrimer, scored against an AlphaFold3
+model) demonstrates the method on genuine spectra and honestly bounds it: the
+never-exclude envelope is 92.9% — conditional, unlike the simulated targets, on
+the measured NOEs being consistent with the (predicted) structure — and treating
+the trimer's chains as symmetry images is required to explain the inter-subunit
+NOEs at all.
 
 **Availability and implementation:** magicmaus is implemented in Python 3 (NumPy,
 PySAT) and released under the MIT license at
@@ -161,7 +167,15 @@ de-novo blind targets of the MAUS study (Nerli *et al.*, 2021) — interleukin-2
 and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — and malate synthase G
 (MSG; PDB 1D8C), at 257 methyls the largest single-chain protein whose Ile/Leu/Val
 methyls have been assigned by solution NMR and the classic large-protein methyl
-benchmark, spanning 43–257 observed methyls (Table 1).
+benchmark, spanning 43–257 observed methyls (Table 1). To test the method on
+genuine spectra rather than a simulated network we add one real-experimental
+target: measured AILTV methyl HMQC, 3D (H)CCH NOESY-HMQC and HMBC-HMQC peak lists
+of the tumour-necrosis-factor-α homotrimer (85 assigned methyls), scored against
+an AlphaFold3 model of the trimer. This target is also our only multimer; because
+the three protomers are magnetically equivalent, each residue gives one HMQC peak
+whose NOE partners may lie in the same or a neighbouring subunit, so `parse_structure`
+retains all three chains as symmetry images of each methyl and scores every
+structural contact by the minimum distance over subunit pairs.
 
 **Results.** MAGIC, scoring over the full type-matched space, assigned 6–12% of
 methyls correctly where it converged (Table 1) — consistent with its reported
@@ -209,10 +223,33 @@ bounds thus yields roughly an order of magnitude more single-answer accuracy tha
 scoring over the full space, at no cost to the certainty guarantee, and improves
 with added experimental input where that input is informative.
 
-**Table 1.** Methyl-level accuracy on seven targets, all engines scored on the
-same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
-contains the truth (never-exclude guarantee). n.c. = did not converge within a
-15-min budget.
+On the real-experimental TNF-α homotrimer the method behaves consistently with
+the simulated targets while exposing two properties only genuine data reveals
+(Table 1). First, multimer handling is not optional but load-bearing: parsed as a
+single protomer the measured inter-subunit NOEs have no structural explanation,
+the hard constraints become jointly infeasible, and the option sets collapse to a
+0% envelope; retaining the three chains as symmetry images (contact = minimum
+distance over subunits) recovers a coherent 92.9% envelope with 6 uniquely
+determined peaks. Second, the never-exclude guarantee is conditional on the NOEs
+being consistent with the structure — a condition simulated data satisfies by
+construction. Measured against an AlphaFold3 model, 6 of 85 peaks (Ala33, Leu75δ2,
+Val91γ1/γ2, Leu94δ1/δ2) carry NOEs the predicted structure does not support at the
+6/10 Å cutoffs and fall out of the envelope, so the real-world figure is 92.9%,
+not 100%. Committed accuracy (30.6%) is lower than the simulated targets, as
+expected for a boolean-dominated (H)CCH network with raw peak-height intensities
+scored against a predicted fold. HMBC, finally, is counter-productive here: the
+measured HMBC shifts resolve poorly at these tolerances (65 of 69 rows unmatched)
+and the few that match include a wrong geminal pair; because each HMBC link is a
+hard constraint, a single incorrect one renders the global SAT infeasible and
+collapses the envelope, so `--hmbc` is not recommended on this dataset — the same
+target-dependent fragility seen on REC2/REC3, taken to its extreme by real
+spectral noise.
+
+**Table 1.** Methyl-level accuracy on seven structure-simulated targets plus one
+real-experimental multimer (TNF-α), all engines scored on the same 1/r^6^
+intensity NOESY. Envelope = fraction of peaks whose MAUS option set contains the
+truth (never-exclude guarantee). n.c. = did not converge within a 15-min budget;
+n.r. = not recommended (see below).
 
 | Target | BMRB / PDB | Labeling | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
@@ -223,13 +260,25 @@ contains the truth (never-exclude guarantee). n.c. = did not converge within a
 | REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
 | MBP | 7114 / 1ANF | AILMTV | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
 | MSG | SI† / 1D8C | ILV | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
+| TNF-α‡ | real / AF3 trimer | AILTV | 85 | — | 7.1% | 30.6% | 28.2% | n.r. | 92.9% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et
-al.* (2019). The MAUS column is the fraction of peaks it commits uniquely (all correct); on the
-rest it abstains, so its coverage is the Envelope column (100%). The +HMBC column
-adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft,
-forcing each Leu/Val geminal pair onto its two structural methyls.
+al.* (2019). ‡TNF-α is the only real-experimental and only multimeric target:
+genuine methyl-NMR HMQC/NOESY/HMBC peak lists of the tumour-necrosis-factor-α
+homotrimer, scored against an AlphaFold3 trimer model. It exposes two properties
+the simulated targets cannot (detailed below): the never-exclude envelope is
+conditional on NOE–structure consistency (92.9%, not 100%, against a *predicted*
+structure), and multimer handling — treating the three chains as symmetry images
+so a contact is the minimum distance over subunits — is required, since a
+single-protomer parse leaves the real inter-subunit NOEs unexplainable and
+collapses the SAT to a 0% envelope. HMBC is marked n.r.: real HMBC shifts resolve
+poorly at these tolerances and one wrongly matched geminal link makes the global
+SAT infeasible, collapsing the envelope. The MAUS column is the fraction of peaks
+it commits uniquely (all correct); on the rest it abstains, so its coverage is the
+Envelope column. The +HMBC column adds an optional HMBC-HMQC geminal-link
+experiment (`--hmbc`) on top of +soft, forcing each Leu/Val geminal pair onto its
+two structural methyls.
 
 The labeling scheme (Table 1) shapes the assignment problem in two ways that the
 residue-resolved accuracy of Table 2 makes explicit. First, because a peak competes
@@ -437,9 +486,11 @@ prunes candidates from up to ~60 to 1–3; an intensity-weighted NOE score
 (MAGIC-style), applied only within those bounds via a SAT-feasible seed and
 feasibility-preserving 3-cycle simulated annealing, commits to a single coherent map with a
 per-peak confidence tier (unique / scored / ambiguous). (**B**) Methyl-level
-accuracy across the seven benchmark targets (43–257 methyls, ordered by size),
+accuracy across the seven structure-simulated benchmark targets (43–257 methyls,
+ordered by size) plus the real-experimental TNF-α homotrimer (*real),
 all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)
 versus MAUS unique-only calls (purple; the constraint layer's decisive fraction,
 abstaining elsewhere) and full-space MAGIC (red; hatched *n.c.* where scoring did
-not converge within a 15-min budget). Green markers denote the 100% truth-in-envelope guarantee,
-preserved on every target.](figure1.png)
+not converge within a 15-min budget). Green markers denote the truth-in-envelope
+guarantee — 100% on every simulated target, and 92.9% on real TNF-α data, where a
+predicted structure cannot support 6 measured NOEs.](figure1.png)

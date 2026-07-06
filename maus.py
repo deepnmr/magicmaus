@@ -59,43 +59,111 @@ class Methyl:
   res_type: str       # one-letter
   res_num: int
   atom: str
-  coord: Tuple[float, float, float]
+  coord: Tuple[float, float, float]          # reference-chain position
   geminal_atom: str   # partner methyl atom name, or '' if none
+  # all symmetry copies across chains of a homo-oligomer (>=1; [coord] for a
+  # monomer).  Inter-subunit NOE contacts use the min distance over images.
+  images: Tuple[Tuple[float, float, float], ...] = ()
 
 
-def parse_structure(pdb_lines, labeling: Dict[str, List[Tuple[str, Optional[str]]]]) -> List[Methyl]:
-  coords: Dict[Tuple[str, int], Dict[str, Tuple[float, float, float]]] = {}
-  for line in pdb_lines:
+def min_dist(a: 'Methyl', b: 'Methyl') -> float:
+  """Closest approach between two methyls over all chain images (intra- or
+  inter-subunit).  Falls back to the reference coords for a monomer."""
+  ia = a.images or (a.coord,)
+  ib = b.images or (b.coord,)
+  return min(math.dist(ca, cb) for ca in ia for cb in ib)
+
+
+def _coords_from_pdb(lines):
+  # (one, resi) -> atom -> [xyz per chain].  All chains kept so a homo-oligomer
+  # contributes one image per subunit; altloc other than blank/A skipped.
+  coords: Dict[Tuple[str, int], Dict[str, list]] = {}
+  for line in lines:
     if not line.startswith('ATOM'):
       continue
     resn = line[17:20].strip()
     if resn not in THREE_TO_ONE:
       continue
-    chain = line[21]
-    if chain not in (' ', 'A'):
+    if line[16] not in (' ', 'A'):        # altloc
       continue
     try:
       resi = int(line[22:26])
     except ValueError:
       continue
     atom = line[12:16].strip()
-    coords.setdefault((THREE_TO_ONE[resn], resi), {})[atom] = (
-      float(line[30:38]), float(line[38:46]), float(line[46:54])
+    coords.setdefault((THREE_TO_ONE[resn], resi), {}).setdefault(atom, []).append(
+      (float(line[30:38]), float(line[38:46]), float(line[46:54]))
     )
+  return coords
+
+
+def _coords_from_cif(lines):
+  """Parse the mmCIF `_atom_site` loop by column name (order varies).  Keeps
+  ATOM records of the first model, all chains (one image per subunit),
+  non-alt (or altloc A)."""
+  coords: Dict[Tuple[str, int], Dict[str, list]] = {}
+  cols, in_loop, first_model = {}, False, None
+  it = iter(lines)
+  for line in it:
+    s = line.strip()
+    if s == 'loop_':
+      cols, in_loop = {}, True
+      continue
+    if in_loop and s.startswith('_atom_site.'):
+      cols[s.split('.', 1)[1]] = len(cols)
+      continue
+    if in_loop and cols and s and not s.startswith('_'):
+      # data rows until the loop ends
+      while True:
+        if not s or s.startswith(('_', '#', 'loop_')):
+          break
+        f = s.split()
+        if len(f) >= len(cols):
+          def g(name, default=None):
+            i = cols.get(name)
+            return f[i] if i is not None else default
+          if g('group_PDB', 'ATOM') == 'ATOM':
+            resn = g('auth_comp_id') or g('label_comp_id')
+            model = g('pdbx_PDB_model_num')
+            alt = g('label_alt_id', '.')
+            if first_model is None:
+              first_model = model
+            if (resn in THREE_TO_ONE and model == first_model
+                and alt in ('.', '?', 'A')):
+              try:
+                resi = int(g('auth_seq_id') or g('label_seq_id'))
+              except (TypeError, ValueError):
+                resi = None
+              if resi is not None:
+                atom = g('label_atom_id') or g('auth_atom_id')
+                coords.setdefault((THREE_TO_ONE[resn], resi), {}).setdefault(
+                  atom, []).append((float(g('Cartn_x')), float(g('Cartn_y')),
+                                    float(g('Cartn_z'))))
+        s = next(it, '').strip()
+      in_loop = False
+  return coords
+
+
+def parse_structure(pdb_lines, labeling: Dict[str, List[Tuple[str, Optional[str]]]]) -> List[Methyl]:
+  lines = list(pdb_lines)
+  is_cif = any(l.startswith('_atom_site.') for l in lines)
+  coords = _coords_from_cif(lines) if is_cif else _coords_from_pdb(lines)
 
   methyls: List[Methyl] = []
   for (one, resi) in sorted(coords, key=lambda k: (k[1], k[0])):
     for atom, gem in labeling.get(one, []):
       if atom not in coords[(one, resi)]:
         continue
+      imgs = tuple(coords[(one, resi)][atom])   # one per chain (reference first)
       methyls.append(Methyl(
         index=len(methyls),
         label=f'{one}{resi}{atom}',
         res_type=one,
         res_num=resi,
         atom=atom,
-        coord=coords[(one, resi)][atom],
+        coord=imgs[0],
         geminal_atom=gem or '',
+        images=imgs,
       ))
   return methyls
 
@@ -108,7 +176,7 @@ def build_structure_graph(methyls: List[Methyl], short_cut: float, long_cut: flo
     if same_res and (a.atom == b.geminal_atom):
       gem.add((a.index, b.index)); gem.add((b.index, a.index))
       continue
-    d = math.dist(a.coord, b.coord)
+    d = min_dist(a, b)
     if d < short_cut:
       short.add((a.index, b.index)); short.add((b.index, a.index))
     elif d <= long_cut:

@@ -62,19 +62,22 @@ tierbox(gsA, 7.55, 1.65, 2.25, 1.05, 'ambiguous', 'true symmetry', '#f3f4f6', GR
 arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6.75, 3.3, 7.5, 2.2)
 
 # --- Panel B: seven-target benchmark (same intensity NOESY) ---
-# (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged)
+# (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged, envelope%)
+# TNF-alpha is the one real-experimental / multimer target: envelope 92.9% (not
+# 100), MAGIC not run (real data, no MAGIC control bundle).
 DATA = [
-  ('Ubq', 43, 9.3, 34.9, 100.0, True),
-  ('HNH', 57, 12.3, 26.3, 86.0, True),
-  ('IL-2', 59, 8.5, 8.5, 96.6, True),
-  ('REC2', 63, None, 12.7, 90.5, False),
-  ('REC3', 85, None, 8.2, 57.6, False),
-  ('MBP', 192, 5.7, 26.6, 87.5, True),
-  ('MSG', 257, None, 1.6, 33.5, False),
+  ('Ubq', 43, 9.3, 34.9, 100.0, True, 100.0),
+  ('HNH', 57, 12.3, 26.3, 86.0, True, 100.0),
+  ('IL-2', 59, 8.5, 8.5, 96.6, True, 100.0),
+  ('REC2', 63, None, 12.7, 90.5, False, 100.0),
+  ('REC3', 85, None, 8.2, 57.6, False, 100.0),
+  ('MBP', 192, 5.7, 26.6, 87.5, True, 100.0),
+  ('MSG', 257, None, 1.6, 33.5, False, 100.0),
+  ('TNFα*', 85, None, 7.1, 28.2, False, 92.9),
 ]
 x = range(len(DATA))
 w = 0.26
-for i, (_lab, _n, mg, ma, mm, conv) in enumerate(DATA):
+for i, (_lab, _n, mg, ma, mm, conv, env) in enumerate(DATA):
   axB.bar(i - w, mm, width=w, color=BLUE, zorder=3)
   axB.bar(i, ma, width=w, color=PURPLE, zorder=3)
   if conv:
@@ -82,10 +85,12 @@ for i, (_lab, _n, mg, ma, mm, conv) in enumerate(DATA):
   else:
     axB.bar(i + w, 4.0, width=w, color='none', edgecolor=RED, hatch='///', lw=0.6, zorder=3)
     axB.text(i + w, 5.5, 'n.c.', ha='center', fontsize=5.0, color=RED, rotation=90, va='bottom')
-  axB.plot(i, 100, marker='v', ms=4, color=GREEN, zorder=4)
+  axB.plot(i, env, marker='v', ms=4, color=GREEN, zorder=4)
 axB.axhline(100, ls=':', lw=0.9, color='#999', zorder=1)
 # 'envelope = 100%' below the line on the left, clear of the markers on the line
 axB.text(-0.55, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
+# TNF-alpha: real data, envelope dips to 92.9% (marker sits below the 100% line)
+axB.text(len(DATA) - 1, 88.5, '*real', ha='center', fontsize=5.0, color=GREEN)
 axB.set_ylim(0, 116); axB.set_xlim(-0.6, len(DATA) - 0.4)
 axB.set_xticks(list(x))
 axB.set_xticklabels([f'{lab}\n{n}' for (lab, n, *_ ) in DATA], fontsize=5.6)
