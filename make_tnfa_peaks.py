@@ -143,21 +143,23 @@ def main():
   thr = pick(D / 'TNFa_Thr_Methyl_HMQC.ucsf', kk['Thr'])
   print(f'picked: ILVAT={len(ilvat)} ILV={len(ilv)} Val={len(val)} Thr={len(thr)}')
 
+  # Ile delta1 is the only methyl with 13C below ~17 ppm (Ile 12.8-15.8;
+  # every other type >= 18.3), so type it by chemical shift, not the Thr sample
+  # (whose 13C window clips the low-delta1 Ile).
+  ILE_C_MAX = 17.0
   rows = []
   counts = {}
   for pk in ilvat:
-    in_ilv = matches(pk, ilv)
-    in_val = matches(pk, val)
-    in_thr = matches(pk, thr)
-    if in_val:
-      t = 'V'
-    elif in_ilv and in_thr:
+    c13 = pk[0]
+    if c13 < ILE_C_MAX:
       t = 'I'
-    elif in_ilv:
+    elif matches(pk, val):
+      t = 'V'
+    elif matches(pk, ilv):     # ILV, not Ile, not Val -> Leu
       t = 'L'
-    elif in_thr:            # in ILVAT, not ILV, matches Thr -> Thr
+    elif matches(pk, thr):     # ILVAT-only matched in Thr sample -> Thr
       t = 'T'
-    else:                   # in ILVAT, not ILV, not Thr -> Ala
+    else:                      # ILVAT-only, unmatched -> Ala
       t = 'A'
     counts[t] = counts.get(t, 0) + 1
     rows.append((pk[1], pk[0], t, pk[2]))   # h_ppm, c_ppm, res_type, height
