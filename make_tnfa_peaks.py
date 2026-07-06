@@ -88,17 +88,22 @@ def pick_3d(path, k=40.0):
   return peaks
 
 
-def write_noesy(path, k=10.0, top=80, out='noesy_picked.tsv'):
-  """Pick a 3D NOESY-HMQC (ax0=C1 partner, ax1=C2 observed, ax2=H); drop diagonal,
-  keep the `top` strongest cross peaks.  A low `top` limits false firm hard-
-  constraints: auto-picked noise makes the SAT UNSAT above ~15 firm edges."""
-  pk = [p for p in pick_3d(path, k) if abs(p[0] - p[1]) >= 0.05][:top]
+def write_noesy(path, k=10.0, tol_c=0.15, out='noesy_picked.tsv'):
+  """Pick a 3D NOESY-HMQC (ax0=C1 partner, ax1=C2 observed, ax2=H); drop diagonal
+  and keep only **symmetric** cross peaks — a real methyl-methyl NOE appears both
+  ways, (C1,C2,·) and (C2,C1,·).  This rejects the one-sided picking noise that
+  makes the SAT UNSAT, so all symmetric edges can be used (no artificial top-N
+  cap needed) with the never-exclude envelope intact."""
+  pk = [p for p in pick_3d(path, k) if abs(p[0] - p[1]) >= 0.05]
+  sym = [(c1, c2, h2, ht) for (c1, c2, h2, ht) in pk
+         if any((a, b) != (c1, c2) and abs(c2 - a) <= tol_c and abs(c1 - b) <= tol_c
+                for a, b, _, _ in pk)]
   lines = ['label\tC1\tC2\tH2\tintensity']
-  for i, (c1, c2, h2, ht) in enumerate(pk, 1):
+  for i, (c1, c2, h2, ht) in enumerate(sym, 1):
     lines.append(f'X{i}\t{c1:.3f}\t{c2:.3f}\t{h2:.3f}\t{ht:.6g}')
   (D / out).write_text('\n'.join(lines) + '\n')
-  print(f'NOESY: kept top {len(pk)} cross peaks -> {D}/{out}')
-  return len(pk)
+  print(f'NOESY: {len(pk)} cross peaks, {len(sym)} symmetric -> {D}/{out}')
+  return len(sym)
 
 
 def matches(peak, plist, tol_c=0.10, tol_h=0.02):
@@ -222,7 +227,7 @@ def main():
     out.append(f'P{i}\t{h:.3f}\t{c:.3f}\t{t}')
   (D / 'hmqc_picked.tsv').write_text('\n'.join(out) + '\n')
   print(f'wrote {D}/hmqc_picked.tsv')
-  write_noesy(D / 'TNFa_ILVAT_NOESY_HMQC.ucsf', top=80)
+  write_noesy(D / 'TNFa_ILVAT_NOESY_HMQC.ucsf')
 
 
 if __name__ == '__main__':

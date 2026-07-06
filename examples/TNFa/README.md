@@ -136,23 +136,29 @@ over-capacity instance) — if a type has more peaks than methyls.
 |---|---|
 | ILVAT peaks picked → typed (capped) | 87 peaks; **80/85** true peaks recovered |
 | type correct | **73/80 = 91%** (Ile 8/8 by shift; 3D-HMBC geminal fills Val to 26/26) |
-| NOESY cross peaks | top 80 by height (~13 resolve to firm constraints) |
+| NOESY cross peaks | **symmetric** filter: 226 of 315 (37 resolve to firm constraints) |
 | **MAUS envelope** | **74/80 = 92.5%** truth-in-option-set |
-| **magicmaus committed** | single-digit % (NOESY-noise-limited, see below) |
+| **magicmaus committed** | single-digit % (intensity-limited, see below) |
 
 The 3D HMBC geminal link fills the Val type to its full 26/26 (each Val whose
 partner the low-SNR `Val_Methyl` catches is propagated), lifting the envelope
 from 87.5% (2D HMBC) to **92.5%** — near the curated-`.list` figure of 95.3%.
 
+**Symmetric NOESY.** A real methyl–methyl NOE appears both ways — (C1,C2,·) and
+(C2,C1,·) — while one-sided picking noise does not. Keeping only symmetric cross
+peaks (226 of 315) removes the false hard constraints that made the SAT **UNSAT**
+above ~15 firm edges, so all symmetric edges are used (37 firm) with no arbitrary
+top-N cap and the envelope intact.
+
 Shift-based Ile typing plus 3D-HMBC geminal linking lifts the type accuracy to
 91% and the MAUS envelope to 92.5% (from 77.5% with the first, cruder typing).
-The committed call stays single-digit, capped by the NOESY: an auto-picked,
-boolean-ish (H)CCH network with raw peak heights gives the scoring layer little
-to grade, and picking noise makes the SAT **UNSAT** once ~16 cross peaks resolve
-to firm hard constraints (so the NOESY is held to its top 80). This is the honest
-limit of end-to-end automation on this dataset — a strong bounded envelope but
-weak commitment — versus the assigned-`.list` track above, where curated peaks
-let the scoring layer commit.
+The symmetric NOESY filter removes the SAT fragility (37 firm edges now feasible,
+no arbitrary cap), but the committed call stays single-digit: auto-picked raw peak
+heights are poor intensities, so the MAGIC-style scoring layer cannot rank the
+right methyl within the (correct, 92.5%) option set. This is the honest limit of
+end-to-end automation on this dataset — a strong bounded envelope but weak
+commitment, gated now by intensity quality rather than SAT feasibility — versus
+the assigned-`.list` track above, where curated peaks let the scoring layer commit.
 
 ## What the numbers mean
 
