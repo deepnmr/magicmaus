@@ -48,10 +48,10 @@ maltose-binding protein (192 methyls) it assigns 87.0% of methyls correctly
 (87.5% with ambiguous-NOE evidence) versus 5.7% for scoring alone. A further
 real-experimental multimer (the TNF-α homotrimer, scored against an AlphaFold3
 model) demonstrates the method on genuine spectra and honestly bounds it: the
-never-exclude envelope is 92.9% — conditional, unlike the simulated targets, on
+never-exclude envelope is 95.3% — conditional, unlike the simulated targets, on
 the measured NOEs being consistent with the (predicted) structure — and treating
 the trimer's chains as symmetry images is required to explain the inter-subunit
-NOEs at all.
+NOEs, recovering 6 further peaks in the envelope.
 
 **Availability and implementation:** magicmaus is implemented in Python 3 (NumPy,
 PySAT) and released under the MIT license at
@@ -223,33 +223,32 @@ bounds thus yields roughly an order of magnitude more single-answer accuracy tha
 scoring over the full space, at no cost to the certainty guarantee, and improves
 with added experimental input where that input is informative.
 
-On the real-experimental TNF-α homotrimer the method behaves consistently with
-the simulated targets while exposing two properties only genuine data reveals
-(Table 1). First, multimer handling is not optional but load-bearing: parsed as a
-single protomer the measured inter-subunit NOEs have no structural explanation,
-the hard constraints become jointly infeasible, and the option sets collapse to a
-0% envelope; retaining the three chains as symmetry images (contact = minimum
-distance over subunits) recovers a coherent 92.9% envelope with 6 uniquely
-determined peaks. Second, the never-exclude guarantee is conditional on the NOEs
+On the real-experimental TNF-α homotrimer (matched at the wider H±0.02/C±0.1 ppm
+tolerance its broader linewidths require) the method behaves consistently with the
+simulated targets while exposing two properties only genuine data reveals
+(Table 1). First, multimer handling is load-bearing: parsed as a single protomer,
+6 of the measured inter-subunit NOEs have no structural explanation and drop from
+the envelope (75/85); retaining the three chains as symmetry images (contact =
+minimum distance over subunits) explains them and recovers a coherent 95.3%
+envelope (81/85). Second, the never-exclude guarantee is conditional on the NOEs
 being consistent with the structure — a condition simulated data satisfies by
-construction. Measured against an AlphaFold3 model, 6 of 85 peaks (Ala33, Leu75δ2,
-Val91γ1/γ2, Leu94δ1/δ2) carry NOEs the predicted structure does not support at the
-6/10 Å cutoffs and fall out of the envelope, so the real-world figure is 92.9%,
-not 100%. Committed accuracy (30.6%) is lower than the simulated targets, as
-expected for a boolean-dominated (H)CCH network with raw peak-height intensities
-scored against a predicted fold. HMBC, finally, is counter-productive here: the
-measured HMBC shifts resolve poorly at these tolerances (65 of 69 rows unmatched)
-and the few that match include a wrong geminal pair; because each HMBC link is a
-hard constraint, a single incorrect one renders the global SAT infeasible and
-collapses the envelope, so `--hmbc` is not recommended on this dataset — the same
-target-dependent fragility seen on REC2/REC3, taken to its extreme by real
-spectral noise.
+construction. Measured against an AlphaFold3 model, 4 of 85 peaks (Val13γ1,
+Ala22β, Leu29δ1, Leu94δ1) carry NOEs the predicted structure does not support at
+the 6/10 Å cutoffs and fall out of the envelope, so the real-world figure is
+95.3%, not 100%. Committed accuracy (14.1%; 11.8% with soft evidence) is lower
+than the simulated targets, as expected for a sparse, boolean-dominated (H)CCH
+network — only 37 of 220 cross peaks resolve to a firm constraint at this wide
+tolerance — with raw peak-height intensities scored against a predicted fold. The
+optional HMBC lever is the one experimental input that helps here, lifting the
+committed call from 11.8 to 17.6% by coupling the geminal pairs' NOE evidence; at
+this tolerance the sparse HMBC matches (4 of 69 firm) are clean enough to inform
+rather than over-constrain, unlike the tighter-tolerance regime where a single
+mismatched geminal link can render the SAT infeasible.
 
 **Table 1.** Methyl-level accuracy on seven structure-simulated targets plus one
 real-experimental multimer (TNF-α), all engines scored on the same 1/r^6^
 intensity NOESY. Envelope = fraction of peaks whose MAUS option set contains the
-truth (never-exclude guarantee). n.c. = did not converge within a 15-min budget;
-n.r. = not recommended (see below).
+truth (never-exclude guarantee). n.c. = did not converge within a 15-min budget.
 
 | Target | BMRB / PDB | Labeling | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
@@ -260,25 +259,26 @@ n.r. = not recommended (see below).
 | REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
 | MBP | 7114 / 1ANF | AILMTV | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
 | MSG | SI† / 1D8C | ILV | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
-| TNF-α‡ | real / AF3 trimer | AILTV | 85 | 5.9% | 7.1% | 30.6% | 28.2% | n.r. | 92.9% |
+| TNF-α‡ | real / AF3 trimer | AILTV | 85 | 2.4% | 0.0% | 14.1% | 11.8% | 17.6% | 95.3% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et
 al.* (2019). ‡TNF-α is the only real-experimental and only multimeric target:
 genuine methyl-NMR HMQC/NOESY/HMBC peak lists of the tumour-necrosis-factor-α
-homotrimer, scored against an AlphaFold3 trimer model. It exposes two properties
-the simulated targets cannot (detailed below): the never-exclude envelope is
-conditional on NOE–structure consistency (92.9%, not 100%, against a *predicted*
-structure), and multimer handling — treating the three chains as symmetry images
-so a contact is the minimum distance over subunits — is required, since a
-single-protomer parse leaves the real inter-subunit NOEs unexplainable and
-collapses the SAT to a 0% envelope. HMBC is marked n.r.: real HMBC shifts resolve
-poorly at these tolerances and one wrongly matched geminal link makes the global
-SAT infeasible, collapsing the envelope. The MAUS column is the fraction of peaks
-it commits uniquely (all correct); on the rest it abstains, so its coverage is the
-Envelope column. The +HMBC column adds an optional HMBC-HMQC geminal-link
-experiment (`--hmbc`) on top of +soft, forcing each Leu/Val geminal pair onto its
-two structural methyls.
+homotrimer, scored against an AlphaFold3 trimer model. Because its measured
+linewidths are broader than the simulated targets', it is matched at the wider
+tolerance H±0.02/C±0.1 ppm (vs H±0.01/C±0.05 for the rest). It exposes two
+properties the simulated targets cannot (detailed below): the never-exclude
+envelope is conditional on NOE–structure consistency (95.3%, not 100%, against a
+*predicted* structure), and multimer handling — treating the three chains as
+symmetry images so a contact is the minimum distance over subunits — is required
+to explain the inter-subunit NOEs, recovering 6 further peaks in the envelope
+(81/85 vs 75/85 single-protomer). The MAUS column is the fraction of peaks it
+commits uniquely (all correct); at this wide tolerance none is uniquely forced, so
+its coverage is entirely the Envelope column. The +HMBC column adds an optional
+HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft, forcing each
+Leu/Val geminal pair onto its two structural methyls; on TNF-α it is the one
+experimental lever that helps (11.8→17.6%).
 
 The labeling scheme (Table 1) shapes the assignment problem in two ways that the
 residue-resolved accuracy of Table 2 makes explicit. First, because a peak competes
@@ -327,14 +327,15 @@ single-methyl, are NOE-poor on MBP.
 | REC3 | 54% (7/13) | 52% (26/50) | 73% (16/22) | — | — | — | 58% (49/85) |
 | MBP | 100% (22/22) | 97% (58/60) | 95% (38/40) | 68% (30/44) | 70% (14/20) | 100% (6/6) | 88% (168/192) |
 | MSG | 44% (18/41) | 32% (42/133) | 31% (26/83) | — | — | — | 33% (86/257) |
-| TNF-α | 100% (8/8) | 6% (2/36) | 27% (7/26) | 50% (6/12) | 33% (1/3) | — | 28% (24/85) |
+| TNF-α | 38% (3/8) | 3% (1/36) | 12% (3/26) | 25% (3/12) | 0% (0/3) | — | 12% (10/85) |
 
-The real-data TNF-α row makes the type dependence stark: Ile (no geminal partner)
-is again assigned outright (8/8), Ala and Thr are middling on a sparse network,
-but Leu collapses to 6% (2/36) and Val to 27% — the near-flat, boolean-dominated
-(H)CCH intensities cannot orient the geminal pairs, so most Leu/Val calls are the
-`ambiguous` coin flip landing on the wrong δ/γ methyl (they stay inside the MAUS
-envelope; only the intensity signal, weak here, could break the tie).
+The real-data TNF-α row (matched at the wider H±0.02/C±0.1 tolerance) makes the
+type dependence stark even as overall accuracy is low on this sparse network: Ile
+(no geminal partner) is still the best-assigned type at 38%, while Leu collapses to
+3% (1/36) and Val to 12% — the few firm NOEs cannot orient the geminal pairs, so
+most Leu/Val calls are the `ambiguous` coin flip landing on the wrong δ/γ methyl
+(they stay inside the MAUS envelope; only the intensity signal, weak here, could
+break the tie).
 
 Resolving the accuracy to the individual prochiral methyl (Table 3) confirms that
 the residual Leu/Val error is a geminal swap rather than random misassignment: on
@@ -364,7 +365,7 @@ target's labeling.
 | REC3 | 54% (7/13) | 52% (13/25) | 52% (13/25) | 73% (8/11) | 73% (8/11) | — | — | — |
 | MBP | 100% (22/22) | 97% (29/30) | 97% (29/30) | 95% (19/20) | 95% (19/20) | 68% (30/44) | 70% (14/20) | 100% (6/6) |
 | MSG | 44% (18/41) | 33% (22/67) | 30% (20/66) | 31% (13/42) | 32% (13/41) | — | — | — |
-| TNF-α | 100% (8/8) | 6% (1/18) | 6% (1/18) | 31% (4/13) | 23% (3/13) | 50% (6/12) | 33% (1/3) | — |
+| TNF-α | 38% (3/8) | 6% (1/18) | 0% (0/18) | 15% (2/13) | 8% (1/13) | 25% (3/12) | 0% (0/3) | — |
 
 The same geminal-swap lens revises how the MAUS column should be read. MAUS's
 decisive fraction (Table 1, MAUS) counts only peaks pinned to a single *methyl*, so
@@ -501,5 +502,6 @@ all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)
 versus MAUS unique-only calls (purple; the constraint layer's decisive fraction,
 abstaining elsewhere) and full-space MAGIC (red; hatched *n.c.* where scoring did
 not converge within a 15-min budget). Green markers denote the truth-in-envelope
-guarantee — 100% on every simulated target, and 92.9% on real TNF-α data, where a
-predicted structure cannot support 6 measured NOEs.](figure1.png)
+guarantee — 100% on every simulated target, and 95.3% on real TNF-α data (matched
+at the wider H±0.02/C±0.1 tolerance), where a predicted structure cannot support 4
+measured NOEs.](figure1.png)

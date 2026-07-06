@@ -250,27 +250,29 @@ methyl deposit) via `make_peaklists.py --shifts-tsv`.
 | REC3 | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2 % | 60.0 % | 57.6 % | 52.9 % | **100 %** |
 | MBP  | 7114 / 1ANF  | AILMTV | 192 | 5.7 % | 26.6 % | 87.0 % | 87.5 % | 93.2 % | **100 %** |
 | MSG  | SI / 1D8C    | ILV | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
-| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | 5.9 % | 7.1 % | 30.6 % | 28.2 % | n.r. | 92.9 % |
+| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | 2.4 % | 0.0 % | 14.1 % | 11.8 % | 17.6 % | 95.3 % |
 
 † **TNF-α is the one real-experimental, multimeric target** — genuine methyl-NMR
 peak lists of the tumour-necrosis-factor-α homotrimer against an AlphaFold3
-trimer model, not a structure-simulated NOESY. It is where the guarantees meet
-reality (see [`examples/TNFa/`](examples/TNFa/)). Two honest lessons the
-simulated targets cannot show: (1) the **100 % envelope is conditional** on the
-NOEs being consistent with the structure — measured against a *predicted*
-structure, 6/85 peaks carry contacts the model does not support, so the envelope
-is 92.9 %, not 100 %; (2) **multimer handling is load-bearing** — parsed as a
-single protomer the real inter-subunit NOEs are unexplainable and the SAT
-collapses to a 0 % envelope; keeping all three chains as symmetry images (contact
-= min distance over subunits) recovers 92.9 %. HMBC is `n.r.` (not recommended)
-here: real HMBC shifts resolve poorly, one wrong matched geminal link makes the
-global SAT infeasible, and the envelope collapses — the extreme of the same
-target-dependent fragility seen on REC2/REC3.
+trimer model, not a structure-simulated NOESY, matched at the wider **H±0.02 /
+C±0.1 ppm** tolerance its broader real linewidths require (the simulated targets
+use ±0.01/±0.05). It is where the guarantees meet reality (see
+[`examples/TNFa/`](examples/TNFa/)). Two honest lessons the simulated targets
+cannot show: (1) the **100 % envelope is conditional** on the NOEs being
+consistent with the structure — measured against a *predicted* structure, 4/85
+peaks carry contacts the model does not support, so the envelope is 95.3 %, not
+100 %; (2) **multimer handling is load-bearing** — parsed as a single protomer 6
+real inter-subunit NOEs are unexplainable and drop from the envelope (75/85);
+keeping all three chains as symmetry images (contact = min distance over subunits)
+explains them and recovers 95.3 % (81/85). On this sparse network (only 37 of 220
+cross peaks give a firm constraint) committed accuracy is low, and the optional
+HMBC lever is the one experimental input that *helps* (11.8 → 17.6 %) rather than
+hurts — at this wider tolerance the few HMBC matches are clean enough to inform.
 
 MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
 the rest — its coverage is the envelope column. The **100 % envelope holds on
-every simulated target** (and 92.9 % on the real TNF-α data, where a predicted
-structure cannot support 6 measured NOEs), and magicmaus beats full-space MAGIC by up to ~15× (MBP 87 % vs
+every simulated target** (and 95.3 % on the real TNF-α data, where a predicted
+structure cannot support 4 measured NOEs), and magicmaus beats full-space MAGIC by up to ~15× (MBP 87 % vs
 5.7 %). The 3-cycle annealer is what closes the gap: on the intensity network the
 objective's global optimum *is* the truth (a truth-seeded search scores ~96 %),
 and the annealer reaches it where a plain greedy ascent stalls ~10–20 % short.

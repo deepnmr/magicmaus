@@ -39,33 +39,38 @@ python make_tnfa_input.py examples/TNFa
 TNF-α is a symmetric homotrimer; `maus.parse_structure` keeps all three chains
 as symmetry images per methyl and scores every contact by the **minimum
 distance over subunits**, so inter-subunit NOEs count. This is not optional
-here — many real NOEs cross the subunit interface:
+here — several real NOEs cross the subunit interface:
 
-| structure model | firm NOE edges | truth-in-envelope | unique |
-|---|---|---|---|
-| single protomer (chain 1 only) | fewer | **0/85** (SAT collapses) | 0 |
-| full trimer (all 3 chains) | more | **79/85 = 92.9%** | 6 |
+| structure model | truth-in-envelope |
+|---|---|
+| single protomer (chain 1 only) | 75/85 = 88.2% |
+| full trimer (all 3 chains) | **81/85 = 95.3%** |
 
-Parsed as a monomer the real inter-subunit NOEs are structurally
-unexplainable, the hard constraints become jointly infeasible, and the option
-sets collapse. The trimer parse recovers a coherent 92.9% envelope.
+Parsed as a monomer, 6 real inter-subunit NOEs have no structural explanation
+and force those peaks out of the envelope; the trimer parse explains them and
+recovers a coherent 95.3% envelope.
 
 ## Run
+
+All runs use the wider **H±0.02 / C±0.1 ppm** match tolerance appropriate to the
+real, broader linewidths (the simulated targets use ±0.01/±0.05).
 
 ```bash
 python magicmaus.py examples/TNFa/fold_tnfa_trimer_model_0.cif \
     examples/TNFa/hmqc.tsv examples/TNFa/noesy_intensity.tsv \
-    --truth examples/TNFa/hmqc_true.tsv --tol-h 0.01 --tol-c 0.05
+    --truth examples/TNFa/hmqc_true.tsv --tol-h 0.02 --tol-c 0.1
 ```
 
 ```
 methyls(G nodes)=89  HMQC peaks=85  NOESY cross peaks=220
-NOE match (tol H±0.01/C±0.05): firm=65 ambiguous(dropped)=111 unmatched=44
-truth in MAUS option set = 79/85 = 92.9%
-magicmaus single call    = 26/85 = 30.6% correct   (unique 6/6, scored 14/38, ambiguous 6/41)
+NOE match (tol H±0.02/C±0.1): firm=37 ambiguous(dropped)=172 unmatched=11
+truth in MAUS option set = 81/85 = 95.3%
+magicmaus single call    = 12/85 = 14.1% correct   (scored 8/26, ambiguous 4/59)
 ```
 
-Or the same three-engine benchmark as the other targets:
+`--soft-ambiguous` gives 10/85 = 11.8%; adding `--hmbc` on top lifts it to
+15/85 = 17.6% (the one experimental lever that helps here). Or the same
+three-engine benchmark as the other targets:
 
 ```bash
 python bench.py examples/TNFa examples/TNFa/fold_tnfa_trimer_model_0.cif
@@ -79,33 +84,30 @@ control bundle and `../magic/` scores it (committed result: `magic_assignments.t
 
 ```bash
 python convert_to_magic.py examples/TNFa/hmqc.tsv examples/TNFa/noesy_intensity.tsv \
-    examples/TNFa/tnfa_protomer.pdb magic_run_tnfa/
+    examples/TNFa/tnfa_protomer.pdb magic_run_tnfa/ --tol-h 0.02 --tol-c 0.1
 # edit LABELING to AILTV (no Met), then from ../magic/:
 python -m magic run ../magicmaus/magic_run_tnfa/control.txt --output-dir out
 ```
 
-MAGIC assigns **5/85 = 5.9%** methyls (residue-level 8.2%) — full-space scoring
+MAGIC assigns **2/85 = 2.4%** methyls (residue-level 5.9%) — full-space scoring
 over a near-flat real-data landscape, the same regime it hits on the simulated
 targets.
 
 ## What the numbers mean
 
-Two honest facts real data exposes that the simulated targets cannot:
-
 - **The 100% guarantee is conditional.** MAUS never excludes the truth *when the
   NOEs are consistent with the structure*. On real data measured against a
-  predicted structure, 6/85 peaks (A33, L75δ2, V91γ1/γ2, L94δ1/δ2) carry NOEs
-  the AlphaFold model does not support at the 6/10 Å cutoffs, so they fall out
-  of the envelope. 92.9%, not 100%, is the real-world number.
-- **HMBC hard-constraints are fragile to noise.** `--hmbc` turns each matched
-  HMBC cross peak into a hard geminal link. Real HMBC shifts resolve poorly at
-  these tolerances (65 of 69 rows unmatched); the few that match include a
-  *wrong* geminal pair, and one bad hard constraint makes the global SAT
-  infeasible → the envelope collapses to 0. On this dataset HMBC is **not
-  recommended** — consistent with its target-dependent role elsewhere, taken to
-  its extreme by real spectral noise.
-
-Accuracy (30.6%) is lower than the simulated targets because the input is a
-boolean-ish 3D `(H)CCH` network with raw peak-height intensities, matched
-against a predicted structure — the hardest, most realistic setting in the
-benchmark.
+  predicted structure, 4/85 peaks (V13γ1, A22β, L29δ1, L94δ1) carry NOEs the
+  AlphaFold model does not support at the 6/10 Å cutoffs, so they fall out of the
+  envelope. 95.3%, not 100%, is the real-world number.
+- **A sparse network caps the committed accuracy.** Only 37 of 220 cross peaks
+  resolve to a firm constraint at this tolerance, so most peaks land in large
+  option sets and the scored/ambiguous calls are near coin flips — 14.1% committed
+  (11.8% +soft). The residual is honestly flagged `ambiguous`, not guessed.
+- **HMBC helps here.** `--hmbc` turns each matched HMBC cross peak into a hard
+  geminal link. At this wider tolerance only 4 of 69 rows match firmly, but those
+  matches are clean enough to couple the geminal pairs' NOE evidence, lifting the
+  committed call 11.8 → 17.6% — the one experimental lever that helps on this
+  dataset. (At a tighter tolerance the HMBC matches include a wrong geminal pair
+  and one bad hard link can render the SAT infeasible, so `--hmbc` is
+  tolerance-sensitive, as elsewhere.)
