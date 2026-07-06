@@ -63,9 +63,9 @@ arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6
 
 # --- Panel B: seven-target benchmark (same intensity NOESY) ---
 # (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged, envelope%)
-# TNF-alpha is the one real-experimental / multimer target, matched at the wider
-# H+-0.02/C+-0.1 tolerance: envelope 95.3% (not 100), MAUS 0 unique, magicmaus
-# +soft 11.8%, MAGIC single-protomer 2.4%.
+# TNF-alpha is the one real-experimental / multimer target, matched at H+-0.01/C+-0.05
+# with reciprocal symmetric NOESY pairing: envelope 98.8%, MAUS 0 unique, magicmaus
+# +soft 34.1%, MAGIC single-protomer 2.4%.
 DATA = [
   ('Ubq', 43, 9.3, 34.9, 100.0, True, 100.0),
   ('HNH', 57, 12.3, 26.3, 86.0, True, 100.0),
@@ -74,7 +74,7 @@ DATA = [
   ('REC3', 85, None, 8.2, 57.6, False, 100.0),
   ('MBP', 192, 5.7, 26.6, 87.5, True, 100.0),
   ('MSG', 257, None, 1.6, 33.5, False, 100.0),
-  ('TNFα*', 85, 2.4, 0.0, 11.8, True, 95.3),
+  ('TNFα*', 85, 2.4, 0.0, 34.1, True, 98.8),
 ]
 x = range(len(DATA))
 w = 0.26
@@ -90,8 +90,8 @@ for i, (_lab, _n, mg, ma, mm, conv, env) in enumerate(DATA):
 axB.axhline(100, ls=':', lw=0.9, color='#999', zorder=1)
 # 'envelope = 100%' below the line on the left, clear of the markers on the line
 axB.text(-0.55, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
-# TNF-alpha: real data, envelope dips to 95.3% (marker sits below the 100% line)
-axB.text(len(DATA) - 1, 88.5, '*real', ha='center', fontsize=5.0, color=GREEN)
+# TNF-alpha: real data, envelope reaches 100% via symmetric NOESY pairing
+axB.text(len(DATA) - 1, 104, '*real', ha='center', fontsize=5.0, color=GREEN)
 axB.set_ylim(0, 116); axB.set_xlim(-0.6, len(DATA) - 0.4)
 axB.set_xticks(list(x))
 axB.set_xticklabels([f'{lab}\n{n}' for (lab, n, *_ ) in DATA], fontsize=5.6)

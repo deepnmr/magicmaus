@@ -48,6 +48,32 @@ def symmetric_edges(peaks, rows, tol_c, tol_h):
   return ed
 
 
+def greedy_feasible(methyls, peaks, gem, sg, lg, seed_edges, cand_edges):
+  """Grow the SAT-feasible hard-edge set: seed with the trustworthy symmetric
+  edges (always feasible), then add carbon-only firm edges strongest-first,
+  keeping each only if the SAT still leaves every peak a non-empty option set.
+
+  A carbon-only edge can be wrong (carbon degeneracy picks the wrong partner);
+  such an edge prunes more than the truth-preserving symmetric set, so it lets
+  the scorer commit -- at the cost of its own envelope.  That is why this feeds
+  the COMMIT engine only; the ENVELOPE engine keeps the symmetric edges alone.
+  """
+  def feasible(edgeset):
+    ne = set()
+    for a, b in edgeset:
+      ne.add((a, b)); ne.add((b, a))
+    opt = maus.MAUS(methyls, peaks, gem, sg, lg, ne).solve_options()
+    return all(len(opt[p.index]) > 0 for p in peaks)
+
+  hard = set(seed_edges)
+  for k, _w in sorted(cand_edges.items(), key=lambda kv: -kv[1]):
+    if k in hard or (k[1], k[0]) in hard:
+      continue
+    if feasible(hard | {k}):
+      hard.add(k)
+  return hard
+
+
 def main():
   peaks = maus.load_hmqc(str(D / 'hmqc.tsv'))
   truth = maus.load_truth(str(D / 'hmqc_true.tsv'))
@@ -75,15 +101,24 @@ def main():
   engE.set_soft_evidence(amb)
   _, options = engE.solve()
 
-  # Commitment engine: the richer carbon-only firm edges prune more and let the
-  # scorer commit, at the cost of a few wrong hard edges (its own envelope < 100%).
+  # Commitment engine: grow a max-feasible hard set from the symmetric seed by
+  # adding carbon-only firm edges that keep the SAT feasible.  The extra (partly
+  # wrong) hard edges prune the option sets enough for the scorer to commit, at
+  # the cost of the commit engine's own envelope (its wrong edges exclude a few
+  # truths -- which is fine, the ENVELOPE number comes from engE, not engC).
   noe_c, ei_c, amb_c, _ = mm.match_noe_intensity(peaks, rows, TOL_H, TOL_C)
+  hard = greedy_feasible(methyls, peaks, gem, sg, lg, ei.keys(), ei_c)
   nset = set()
-  for a, b in ei_c:
+  for a, b in hard:
     nset.add((a, b))
     nset.add((b, a))
-  engC = mm.MagicMaus(methyls, peaks, gem, sg, lg, nset, edge_intensity=ei_c)
-  engC.set_soft_evidence(amb_c)
+  ints = dict(ei)
+  for k, w in ei_c.items():
+    ints[k] = max(ints.get(k, 0.0), w)
+  soft = list(amb_c) + [((a,), (b,), 1.0, w) for (a, b), w in ei_c.items()
+                        if (a, b) not in hard and (b, a) not in hard]
+  engC = mm.MagicMaus(methyls, peaks, gem, sg, lg, nset, edge_intensity=ints)
+  engC.set_soft_evidence(soft)
   chosen, _ = engC.solve()
 
   # Merge: each peak gets the carbon-only committed call inside the 100% symmetric
@@ -105,7 +140,7 @@ def main():
 
   print(f'symmetric NOE edges = {len(ei)}   HMBC gem-links = {gstat["firm"]}')
   print(f'MAUS envelope (symmetric)   = {inset}/{n} = {100 * inset / n:.1f}%  (never excludes truth)')
-  print(f'committed (carbon-only)     = methyl {meth}/{n} = {100 * meth / n:.1f}%  '
+  print(f'committed (greedy hard)     = methyl {meth}/{n} = {100 * meth / n:.1f}%  '
         f'residue {resd}/{n} = {100 * resd / n:.1f}%')
   print(f'committed call in envelope  = {cons}/{n} = {100 * cons / n:.1f}%')
   print(f'wrote {D}/magicmaus_calls_symmetric.tsv')

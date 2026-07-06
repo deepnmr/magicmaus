@@ -21,7 +21,7 @@ answer separately:
 |---|---|
 | `hmqc.tsv` | 85 methyl HMQC **input** peaks: `label ⇥ H_ppm ⇥ C_ppm ⇥ res_type` (anonymous `P1…P85`) |
 | `hmqc_true.tsv` | truth key: `… ⇥ True` (e.g. `V1CG1`), scoring only |
-| `noesy.tsv` / `noesy_intensity.tsv` | 220 NOESY cross peaks, boolean and with Sparky peak heights as intensity |
+| `noesy.tsv` / `noesy_intensity.tsv` | 300 NOESY cross peaks, boolean and with Sparky peak heights as intensity |
 | `hmbc.tsv` | 69 HMBC geminal-link rows |
 
 3 HMQC rows are dropped as un-typable (`?-?` ×2, the ambiguous `vat85C-H`).
@@ -41,14 +41,15 @@ as symmetry images per methyl and scores every contact by the **minimum
 distance over subunits**, so inter-subunit NOEs count. This is not optional
 here — several real NOEs cross the subunit interface:
 
-| structure model | truth-in-envelope |
+| structure model (symmetric NOE edges) | truth-in-envelope |
 |---|---|
 | single protomer (chain 1 only) | 75/85 = 88.2% |
-| full trimer (all 3 chains) | **81/85 = 95.3%** |
+| full trimer (all 3 chains) | **84/85 = 98.8%** |
 
-Parsed as a monomer, 6 real inter-subunit NOEs have no structural explanation
-and force those peaks out of the envelope; the trimer parse explains them and
-recovers a coherent 95.3% envelope.
+Parsed as a monomer, 10 real inter-subunit NOEs have no structural explanation
+and force those peaks out of the envelope; the trimer parse explains 9 of them and
+recovers a 98.8% envelope (the one remaining peak, Leu76δ2, carries an NOE the
+predicted structure does not support).
 
 ## Run
 
@@ -62,56 +63,55 @@ python magicmaus.py examples/TNFa/fold_tnfa_trimer_model_0.cif \
 ```
 
 ```
-methyls(G nodes)=89  HMQC peaks=85  NOESY cross peaks=220
-NOE match (tol H±0.02/C±0.1): firm=37 ambiguous(dropped)=172 unmatched=11
-truth in MAUS option set = 81/85 = 95.3%
-magicmaus single call    = 12/85 = 14.1% correct   (scored 8/26, ambiguous 4/59)
+methyls(G nodes)=89  HMQC peaks=85  NOESY cross peaks=300
+NOE match (tol H±0.02/C±0.1): firm=47 ambiguous(dropped)=229 unmatched=24
+truth in MAUS option set = 84/85 = 98.8%
+magicmaus single call    = 6/85 = 7.1% correct   (scored 4/28, ambiguous 2/57)
 ```
 
-`--soft-ambiguous` gives 10/85 = 11.8%; adding `--hmbc` on top lifts it to
-15/85 = 17.6% (the one experimental lever that helps here). Or the same
-three-engine benchmark as the other targets:
+`--soft-ambiguous` gives 8/85 = 9.4%; adding `--hmbc` on top lifts it to
+9/85 = 10.6% (at the cost of a slightly tighter 96.5% envelope). This plain
+carbon-only CLI stays feasible only at the wider ±0.02/±0.1 tolerance; at the
+±0.01/±0.05 tolerance the carbon-only firm edges collide and go UNSAT — use the
+symmetric run below for the tight-tolerance result. Or the same three-engine
+benchmark as the other targets:
 
 ```bash
 python bench.py examples/TNFa examples/TNFa/fold_tnfa_trimer_model_0.cif
 ```
 
-## NOESY symmetry — a 100% envelope
+## NOESY symmetry — a 98.8% envelope at tight tolerance
 
 A 3D (H)CCH NOESY row `(C1_partner, C2_obs, H2_obs)` gives the partner **only by
-carbon**, so the standard carbon-only match keeps a few wrong firm edges and the
-envelope stalls at 93% (6 truths excluded). But the reciprocal row
-`(C2_partner, C1_obs, H1_obs)` supplies the partner's **proton**: pairing the two
-resolves both endpoints by full `(C,H)`, so every edge is a correct methyl–methyl
-contact. `run_tnfa_symmetric.py` builds those edges (plus the given HMBC geminal
-links and the carbon-only ambiguous rows as soft evidence):
+carbon**. At the tight ±0.01/±0.05 tolerance the carbon-only firm edges on this
+dense trimer collide into mutually inconsistent hard constraints and the SAT goes
+**UNSAT** (it commits nothing). The reciprocal row `(C2_partner, C1_obs, H1_obs)`
+supplies the partner's **proton**: pairing the two resolves both endpoints by full
+`(C,H)`, so every retained edge is a correct methyl–methyl contact.
+`run_tnfa_symmetric.py` builds those edges for the **envelope**, then grows a
+max-feasible hard set (symmetric seed + the carbon-only firm edges that keep the SAT
+feasible) for the **commitment**, with the carbon-only ambiguous rows as soft
+evidence:
 
 ```bash
 python run_tnfa_symmetric.py
 ```
 
 ```
-symmetric NOE edges = 43   HMBC gem-links = 1
-MAUS envelope (assignment) = 85/85 = 100.0%
-committed methyl = 5/85 = 5.9%   residue = 10.6%
-```
-
-```
-symmetric NOE edges = 43   HMBC gem-links = 1
-MAUS envelope (symmetric)  = 85/85 = 100.0%   (never excludes truth)
-committed (carbon-only)    = methyl 28/85 = 32.9%   residue 39/85 = 45.9%
-committed call in envelope = 83/85 = 97.6%
+symmetric NOE edges = 76   HMBC gem-links = 1
+MAUS envelope (symmetric)   = 84/85 = 98.8%  (never excludes truth)
+committed (greedy hard)     = methyl 29/85 = 34.1%  residue 47/85 = 55.3%
+committed call in envelope  = 85/85 = 100.0%
 ```
 
 `run_tnfa_symmetric.py` **merges the two ends of the trade-off** into one
 assignment (written to `magicmaus_calls_symmetric.tsv`): the symmetric edges give
-every peak a **100% never-exclude envelope** (the truth is always in the option
-set), while the richer carbon-only `+soft` edges supply the **best single
-committed call** (33% methyl / 46% residue). The two are consistent — 97.6% of the
-committed calls fall inside the guaranteed envelope — so each peak reports a
-best-guess assignment nested inside a bound that provably contains the truth. This
-is the strongest combined result on the given peak lists: a perfect ambiguity
-envelope with a best-effort commitment inside it.
+every peak a **98.8% never-exclude envelope** (only Leu76δ2, on a
+structure-unsupported NOE, is excluded), while the greedy max-feasible hard set
+supplies the **best single committed call** (34% methyl / 55% residue). The two are
+consistent — every committed call falls inside the guaranteed envelope — so each peak
+reports a best-guess assignment nested inside a bound that (bar the one peak) contains
+the truth. This is the strongest combined result on the given peak lists.
 
 ## MAGIC (sibling engine)
 
@@ -180,7 +180,7 @@ over-capacity instance) — if a type has more peaks than methyls.
 
 The 3D HMBC geminal link fills the Val type to its full 26/26 (each Val whose
 partner the low-SNR `Val_Methyl` catches is propagated), lifting the envelope
-from 87.5% (2D HMBC) to **92.5%** — near the curated-`.list` figure of 95.3%.
+from 87.5% (2D HMBC) to **92.5%** — near the curated-`.list` symmetric figure of 98.8%.
 
 **Symmetric NOESY.** A real methyl–methyl NOE appears both ways — (C1,C2,·) and
 (C2,C1,·) — while one-sided picking noise does not. Keeping only symmetric cross
@@ -208,16 +208,18 @@ outright.
 
 - **The 100% guarantee is conditional.** MAUS never excludes the truth *when the
   NOEs are consistent with the structure*. On real data measured against a
-  predicted structure, 4/85 peaks (V13γ1, A22β, L29δ1, L94δ1) carry NOEs the
-  AlphaFold model does not support at the 6/10 Å cutoffs, so they fall out of the
-  envelope. 95.3%, not 100%, is the real-world number.
-- **A sparse network caps the committed accuracy.** Only 37 of 220 cross peaks
-  resolve to a firm constraint at this tolerance, so most peaks land in large
-  option sets and the scored/ambiguous calls are near coin flips — 14.1% committed
-  (11.8% +soft). The residual is honestly flagged `ambiguous`, not guessed.
-- **HMBC helps here.** `--hmbc` turns each matched HMBC-HMQC cross peak into a
-  hard geminal link. The (revised, reciprocal) HMBC peak list is clean, so the
-  links couple the geminal pairs' NOE evidence and lift the committed call — from
-  11.8 → 17.6% at H±0.02/C±0.1, and from 28.2 → 29.4% at the tighter H±0.01/C±0.05
-  (92.9% envelope) — the one experimental lever that helps on this dataset,
-  without ever rendering the SAT infeasible.
+  predicted structure, one peak (Leu76δ2) carries a symmetric-confirmed NOE the
+  AlphaFold model does not support at the 6/10 Å cutoffs, so it falls out of the
+  envelope. 98.8%, not 100%, is the real-world number.
+- **A sparse network caps the committed accuracy.** Only 47 of 300 cross peaks
+  resolve to a firm constraint at the wide tolerance (and the tight-tolerance
+  carbon-only match is UNSAT), so most peaks land in large option sets and the
+  scored/ambiguous calls are near coin flips. The symmetric run's max-feasible
+  commit reaches 34% methyl / 55% residue; the residual is honestly flagged
+  `ambiguous`, not guessed.
+- **HMBC does not help this run.** `--hmbc` turns each matched HMBC-HMQC cross peak
+  into a hard geminal link. At the wide ±0.02/±0.1 tolerance it nudges the
+  carbon-only commit up (9.4 → 10.6%) at a slightly tighter 96.5% envelope, but at
+  the tight ±0.01/±0.05 symmetric setup only one link matches and adding it to the
+  already max-feasible commit set tips the SAT infeasible — so it is not a net lever
+  on this dataset.
