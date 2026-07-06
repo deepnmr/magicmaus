@@ -53,7 +53,11 @@ NOE the predicted structure cannot support), while the plain carbon-only match i
 UNSAT on this dense trimer — conditional, unlike the simulated targets, on the
 measured NOEs being consistent with the (predicted) structure — and treating
 the trimer's chains as symmetry images is required to explain the inter-subunit
-NOEs, recovering 6 further peaks in the envelope.
+NOEs, recovering 9 further peaks in the envelope. On this one real target the global
+NOE objective no longer peaks at the truth, so a deterministic geminal intensity-ratio
+step (the stronger cross peak to a shared partner belongs to the closer methyl)
+partially resolves the Leu/Val δ1/δ2 swaps (Leu/Val methyl 22.6→27.4%), contributing
+to a committed 37.6% methyl accuracy.
 
 **Availability and implementation:** magicmaus is implemented in Python 3 (NumPy,
 PySAT) and released under the MIT license at
@@ -189,10 +193,11 @@ truth in the option set for 100% of peaks on every target; its result was unchan
 the intensity column, as its boolean constraints cannot use it. magicmaus
 committed a single answer for every peak while preserving that **100%**
 never-exclude envelope throughout, at **82–100%** methyl-level accuracy on the
-smaller targets (a perfect 43/43 on ubiquitin) and **87.0%** on MBP — up to an
-order of magnitude above scoring over the full space. This accuracy comes from the
-scoring layer's 3-cycle simulated-annealing search: on an intensity network the
-NOE objective's global optimum is the truth (a truth-seeded search scores ~96%),
+smaller non-hard-case targets (a perfect 43/43 on ubiquitin) and **87.0%** on MBP —
+up to an order of magnitude above scoring over the full space. This accuracy comes
+from the scoring layer's 3-cycle simulated-annealing search: on a simulated intensity
+network built from the true structure, the NOE objective's global optimum is the truth
+(a truth-seeded search scores ~96%),
 and annealing reaches it where a plain greedy ascent stalls 10–20% short — the
 rotational moves cross the tightly coupled Leu/Val option graphs that pairwise
 swaps cannot. That objective is trustworthy only when it is well-determined, which
@@ -200,7 +205,12 @@ requires two conditions, and magicmaus withholds the annealer — falling back t
 plain greedy ascent — when either fails: (i) the NOESY must carry real intensities
 that pin each contact to its distance (on a boolean network the annealer would
 merely overfit to structural-contact density), and (ii) most of the peaks being
-optimised must actually carry a firm NOE. The hard cases are the targets whose 3D
+optimised must actually carry a firm NOE. A third condition surfaces only on real
+data: the reference structure must itself be accurate. Scored against a *predicted*
+fold (TNF-α, Section 3) the objective's optimum can sit off the truth even with real
+intensities — climbing it harder then lowers accuracy — so there magicmaus orients
+δ1/δ2 with a deterministic local geminal resolver (Section 3) rather than by climbing
+the global score. The hard cases are the targets whose 3D
 (H)CCH network yields few firm NOEs: REC3 (60.0%; 50 of 85 methyls Leu) and above
 all MSG, where only 262 cross peaks resolve to a firm constraint so 95 of 257 peaks
 carry none — below magicmaus's 75% firm-NOE coverage cut, so the annealer is
@@ -217,13 +227,23 @@ which two HMQC peaks are the geminal pair of one residue — enters as a hard
 constraint tying that pair to a single structural residue. It does not by itself
 orient δ1 versus δ2 (the constraint admits both orderings); it collapses
 *cross-residue* ambiguity by coupling the pair's NOE evidence, and hands the
-orientation to the score. Its net effect on accuracy is target-dependent: it helps
+orientation to the score (or, on a predicted fold, to the local resolver below). Its
+net effect on accuracy is target-dependent: it helps
 MBP (87.5% → 93.2%; Table 1, +HMBC) but on the crowded REC2/REC3 domains the extra
 hard links reshape the constrained landscape into a different equal-scoring optimum
-that scores lower, so it too is opt-in. Running the same scoring inside the MAUS
-bounds thus yields roughly an order of magnitude more single-answer accuracy than
-scoring over the full space, at no cost to the certainty guarantee, and improves
-with added experimental input where that input is informative.
+that scores lower, so it too is opt-in. A third lever addresses the δ1/δ2 swap the
+HMBC link leaves open, for the regime where the global score cannot (above): the
+intensity signal is applied locally instead of globally. For each geminal pair whose
+two methyls are both committed, a shared NOE partner Q votes by
+``sign(I(P_a,Q) − I(P_b,Q)) · sign(1/r⁶(g_1,Q) − 1/r⁶(g_2,Q))`` — the stronger cross
+peak belongs to the methyl closer to Q — and the pair is flipped if the firm-edge
+majority disagrees. This deterministic post-step orients δ1/δ2 for the subset of pairs
+with a separating shared firm partner (the rest stay coin flips), without disturbing
+the residue assignment or the envelope, and on TNF-α is what breaks the geminal swaps
+the global score leaves (Section 3). Running the same scoring inside the MAUS bounds
+thus yields roughly an order of magnitude more single-answer accuracy than scoring
+over the full space, at no cost to the certainty guarantee, and improves with added
+experimental input where that input is informative.
 
 On the real-experimental TNF-α homotrimer (matched at H±0.01/C±0.05 with reciprocal
 symmetric NOESY pairing) the method behaves consistently with the
@@ -242,21 +262,25 @@ is what makes even this bound attainable: the plain carbon-only firm match — r
 the partner by carbon alone — collects mutually inconsistent hard edges on this dense
 trimer and is UNSAT outright, so it commits nothing; pairing each row with its
 reciprocal resolves both ends by full (C,H) and every retained edge is a real
-methyl–methyl contact.) Committed accuracy is 37.6% methyl (35.3% before soft
-evidence) and 55.3% at residue level — short of the simulated targets, as expected for
-a boolean-dominated (H)CCH network scored against a predicted fold. The methyl-vs-
-residue gap is entirely geminal swaps: right residue, wrong δ1/δ2 or γ1/γ2 (Table 3).
-Because the scoring objective's global optimum is *not* the truth here (climbing it —
-more annealing restarts, or a normalized objective — lowers accuracy, since real
-intensities against a predicted fold do not pin the true distances), the swaps are
-broken instead by a deterministic geminal resolver: for each Leu/Val pair whose two
-methyls are both committed, the peak with the stronger NOE cross peak to a shared
-partner Q takes the methyl structurally closer to Q (I ~ 1/r⁶), a local 2-way flip
-that raises Leu/Val methyl accuracy from 22.6% to 27.4% (Leu 25→33%) and overall
-methyl from 34.1% to 37.6% without disturbing the residue assignment or the envelope.
-The optional HMBC lever does *not* help this run — only one geminal link matches the
-peaks at H±0.01/C±0.05, and adding it to the already max-feasible commit set tips the
-SAT infeasible rather than orienting the pairs (Table 1, n.r.).
+methyl–methyl contact.) Committed accuracy is 37.6% methyl and 55.3% at residue level
+— short of the simulated targets, as expected for a boolean-dominated (H)CCH network
+scored against a predicted fold. It decomposes into three composable steps: the greedy
+max-feasible commit alone is 31.8%; soft ambiguous-NOE evidence and the geminal
+resolver each add ~2–3.5 points and compose to 37.6% (35.3% with the resolver but no
+soft; 34.1% with soft but no resolver). The methyl-vs-residue gap is entirely geminal
+swaps: right residue, wrong δ1/δ2 or γ1/γ2 (Table 3). The resolver's specific job is
+that orientation, and it matters here because the scoring objective's global optimum is
+*not* the truth on this target (climbing it — more annealing restarts, or a normalized
+objective — lowers accuracy, since real intensities against a predicted fold do not pin
+the true distances). So the swaps are broken locally instead: for each Leu/Val pair
+whose two methyls are both committed, the peak with the stronger NOE cross peak to a
+shared partner Q takes the methyl structurally closer to Q (I ~ 1/r⁶), a deterministic
+2-way flip that lifts Leu/Val methyl accuracy from 22.6% to 27.4% (Leu 25→33%) for the
+subset of pairs with a separating shared firm partner, without disturbing the residue
+assignment or the envelope; pairs with no such partner stay coin flips. The optional
+HMBC lever does *not* help this run — only one geminal link matches the peaks at
+H±0.01/C±0.05, and adding it to the already max-feasible commit set tips the SAT
+infeasible rather than orienting the pairs (Table 1, n.r.).
 
 **Table 1.** Methyl-level accuracy on seven structure-simulated targets plus one
 real-experimental multimer (TNF-α), all engines scored on the same 1/r^6^
@@ -293,9 +317,10 @@ remaining peak (Leu76δ2) carries an NOE the *predicted* structure does not supp
 (the conditional-envelope caveat below). The commit engine grows a max-feasible hard
 set — the symmetric seed plus the carbon-only firm edges that keep the SAT feasible —
 so it prunes enough to commit (its own envelope drops, but the reported Envelope column
-is engE's 98.8%). The MAUS column is the fraction of peaks committed uniquely (all
-correct); none is uniquely forced here, so its coverage is entirely the Envelope
-column. The +HMBC column would add the optional HMBC-HMQC geminal-link experiment
+is engE's 98.8%), and the committed map is finished with the deterministic geminal
+intensity-ratio resolver (Section 3), applied to this real-experimental row only. The
+MAUS column is the fraction of peaks committed uniquely (all correct); none is uniquely
+forced here, so its coverage is entirely the Envelope column. The +HMBC column would add the optional HMBC-HMQC geminal-link experiment
 (`--hmbc`) on top of +soft; only one geminal link matches at this tolerance and adding
 it to the already max-feasible commit set tips the SAT infeasible, so it is not reported
 (n.r.).
@@ -312,9 +337,10 @@ two effects: Ile is the most reliably assigned type — 100% on five of seven ta
 — because it is single-methyl and, being typically buried, NOE-rich; Leu and Val
 are the bottleneck, at 100% only where the network is dense (ubiquitin, IL-2) and
 falling to ~30–50% on the sparse REC3/MSG networks. This is why the residual
-`ambiguous` tier is dominated by Leu/Val pairs — an orientation the intensity score
-resolves only when the two methyls make sufficiently different structural contacts,
-and reports as a coin flip when they do not.
+`ambiguous` tier is dominated by Leu/Val pairs — an orientation resolved only when the
+two methyls make sufficiently different structural contacts (by the global intensity
+score on a true structure, or the local geminal resolver on a predicted one), and
+reported as a coin flip when they do not.
 
 Being single-methyl, however, is necessary but not sufficient: removing geminal
 ambiguity and carrying NOE information are independent. On MBP, Ala Cβ (68%) and Thr
@@ -329,14 +355,18 @@ to pin the enlarged ILV domains (Section 3, coverage gate). In practice the leve
 attack different bottlenecks: extending the labeling beyond ILV partitions the
 problem into finer type classes, an HMBC geminal-link experiment collapses the
 cross-residue ambiguity by tying each geminal pair to one residue, and the
-intensity-weighted score is what finally orients δ1/δ2 within the pair — none is a
-universal fix, and the last two are opt-in.
+intensity-weighted score orients δ1/δ2 within the pair — globally where the objective
+tracks the truth (the simulated targets), or, when it does not (real intensities on a
+predicted fold, where the global optimum drifts off the truth), by the deterministic
+local geminal resolver that compares the two members' NOE intensities to a shared
+partner. None is a universal fix, and the last three are opt-in.
 
 **Table 2.** Methyl-level accuracy of the committed magicmaus call (+soft) resolved
 by residue type. Each cell is correct/observed for that type; a dash marks a type
 absent from the target's labeling. Ile is near-perfect except on the sparse
 REC3/MSG networks; Leu/Val carry the geminal degeneracy; Ala/Thr, though
-single-methyl, are NOE-poor on MBP.
+single-methyl, are NOE-poor on MBP. The TNF-α row additionally has the deterministic
+geminal intensity-ratio resolver applied (real-experimental target only).
 
 | Target | Ile | Leu | Val | Ala | Thr | Met | Total |
 |---|---|---|---|---|---|---|---|
@@ -368,16 +398,25 @@ signature of the achiral network placing the pair on the right *residue* but the
 wrong *methyl*. Both members stay inside the MAUS envelope (the truth is never
 excluded), so the swap is a calibrated coin flip that the confidence tier flags as
 `ambiguous` and that only a signal able to tell δ1 from δ2 can break — the intensity
-score where their structural contacts differ, or an independent stereospecific
-assignment where they do not. An HMBC geminal-link experiment does *not* break it:
-by construction its constraint admits both orderings of the pair (Section 3), so it
-resolves which residue, not which methyl. Ile δ1, having no geminal partner, carries
-no such symmetry and is assigned outright wherever the network is dense.
+score (globally where the objective tracks the truth, i.e. a true structure; or a
+dedicated local geminal resolver where it does not) where the two methyls' structural
+contacts differ, or an independent stereospecific assignment where they do not. On the
+real TNF-α data it is the local resolver that applies (Section 3): the two members'
+cross peaks to a shared partner differ as 1/r⁶, so the stronger one marks the closer
+methyl, breaking the swap where the global objective — its optimum no longer at the
+truth on a predicted fold — cannot (Leu 25→33%, Leu/Val together 22.6→27.4%). An
+HMBC geminal-link
+experiment does *not* break it: by construction its constraint admits both orderings of
+the pair (Section 3), so it resolves which residue, not which methyl. Ile δ1, having no
+geminal partner, carries no such symmetry and is assigned outright wherever the network
+is dense.
 
 **Table 3.** Accuracy resolved to the individual methyl carbon (magicmaus +soft).
 Geminal partners (Leu δ1/δ2, Val γ1/γ2) are listed separately; their near-equal
 columns are the geminal-swap signature. A dash marks a methyl absent from the
-target's labeling.
+target's labeling. The TNF-α row additionally has the geminal intensity-ratio
+resolver applied — its asymmetric Leu δ1/δ2 (28/39%) columns are the post-resolver
+result, not the lockstep signature of the simulated rows.
 
 | Target | Ile δ1 | Leu δ1 | Leu δ2 | Val γ1 | Val γ2 | Ala β | Thr γ2 | Met ε |
 |---|---|---|---|---|---|---|---|---|
@@ -398,9 +437,9 @@ decisive at the *residue* level: the truth's residue is fixed, only its δ1/δ2 
 residue-decisive — and, by never-exclude, correct — on far more peaks than its
 methyl-unique count suggests: 88.4% vs 34.9% on ubiquitin, 53.6% vs 26.6% on MBP,
 and 50.9% vs 26.3% on HNH. This residue-vs-methyl gap is a direct readout of how much
-of MAUS's ambiguity is *merely geminal* — a δ1/δ2 orientation that only the score (or
-a stereospecific measurement) can settle, since it is the one thing the HMBC link
-leaves open. Its complement, the fraction still spanning more than one residue, is the
+of MAUS's ambiguity is *merely geminal* — a δ1/δ2 orientation that only the score (the
+global objective, or the local geminal resolver where it fails) or a stereospecific
+measurement can settle, since it is the one thing the HMBC link leaves open. Its complement, the fraction still spanning more than one residue, is the
 *cross-residue* ambiguity, and it dominates the Leu-crowded ILV targets (IL-2 81%, REC2
 68%, MSG 94% of peaks) where many Leu compete for one peak. That is exactly the part
 the HMBC link collapses: tying each geminal pair to one residue couples their NOE
@@ -417,11 +456,16 @@ solutions to methyl assignment but complementary stages of one: SAT to bound the
 answer with certainty, an intensity-weighted NOE score to commit within the
 bound. The result is a single, coherent assignment with calibrated per-peak
 confidence and an always-correct ambiguity envelope, obtained in seconds. The
-scoring layer is intensity-aware, so the approach improves directly with the
-information content of the NOESY — from a boolean network to real intensities to
-4D experiments — and accepts tentative anchors that propagate through both
-layers. The two clean-room parent implementations and magicmaus are released
-together to support reuse and further hybridization.
+scoring layer is intensity-aware, so the approach improves with the information
+content of the NOESY — from a boolean network to real intensities to 4D experiments —
+when the reference structure is accurate. On our one real target, scored against a
+*predicted* fold, the global objective's optimum no longer coincides with the truth
+(climbing it lowers accuracy); there a deterministic local geminal intensity-ratio
+resolver orients δ1/δ2 instead, and the never-exclude envelope — not the committed
+call — is the guarantee that survives a wrong structure. The method also accepts
+tentative anchors that propagate through both layers. The two clean-room parent
+implementations and magicmaus are released together to support reuse and further
+hybridization.
 
 ## Acknowledgements
 
