@@ -18,6 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
+import maus
 import ucsf
 
 D = Path('examples/TNFa')
@@ -219,7 +220,6 @@ def main():
 
   # cap each type to its structural methyl capacity (injective SAT needs
   # peaks_of_type <= methyls_of_type); keep the strongest peaks per type.
-  import maus
   lab = maus.parse_labeling('A;I;L;M;T;V')
   methyls = maus.parse_structure((D / 'fold_tnfa_trimer_model_0.cif').read_text().splitlines(), lab)
   cap = {}

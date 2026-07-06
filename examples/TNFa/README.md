@@ -91,27 +91,40 @@ supplies the partner's **proton**: pairing the two resolves both endpoints by fu
 `run_tnfa_symmetric.py` builds those edges for the **envelope**, then grows a
 max-feasible hard set (symmetric seed + the carbon-only firm edges that keep the SAT
 feasible) for the **commitment**, with the carbon-only ambiguous rows as soft
-evidence:
+evidence, and finally breaks the Leu/Val geminal swaps with an intensity-ratio
+resolver:
 
 ```bash
 python run_tnfa_symmetric.py
 ```
 
 ```
-symmetric NOE edges = 76   HMBC gem-links = 1
+symmetric NOE edges = 76   HMBC gem-links = 1   geminal flips = 5
 MAUS envelope (symmetric)   = 84/85 = 98.8%  (never excludes truth)
-committed (greedy hard)     = methyl 29/85 = 34.1%  residue 47/85 = 55.3%
-committed call in envelope  = 85/85 = 100.0%
+committed (greedy+geminal)  = methyl 32/85 = 37.6%  residue 47/85 = 55.3%
+committed call in envelope  = 84/85 = 98.8%
 ```
 
 `run_tnfa_symmetric.py` **merges the two ends of the trade-off** into one
 assignment (written to `magicmaus_calls_symmetric.tsv`): the symmetric edges give
 every peak a **98.8% never-exclude envelope** (only Leu76δ2, on a
-structure-unsupported NOE, is excluded), while the greedy max-feasible hard set
-supplies the **best single committed call** (34% methyl / 55% residue). The two are
-consistent — every committed call falls inside the guaranteed envelope — so each peak
-reports a best-guess assignment nested inside a bound that (bar the one peak) contains
-the truth. This is the strongest combined result on the given peak lists.
+structure-unsupported NOE, is excluded), while the greedy max-feasible hard set plus
+the geminal resolver supplies the **best single committed call** (37.6% methyl / 55%
+residue). Nearly every committed call falls inside the guaranteed envelope, so each
+peak reports a best-guess assignment nested inside a bound that (bar the one peak)
+contains the truth. This is the strongest combined result on the given peak lists.
+
+**Geminal intensity-ratio resolver.** The scoring objective's global optimum is *not*
+the truth on real intensities against a predicted fold — climbing it (more annealing
+restarts, or a per-peak-normalized objective) only *lowers* accuracy. So the Leu/Val
+δ1↔δ2 (γ1↔γ2) swaps are broken by a deterministic local rule instead: for a geminal
+pair whose two methyls are both committed to peaks Pa,Pb, a shared NOE partner Q gives
+a vote `sign(I(Pa,Q) − I(Pb,Q)) · sign(1/r⁶(G1,Q) − 1/r⁶(G2,Q))` — the stronger cross
+peak belongs to the methyl closer to Q — and the pair is flipped if the firm-edge
+majority disagrees with the current orientation. Five flips lift Leu/Val methyl
+accuracy from 22.6 % to 27.4 % (Leu 25 → 33 %) and overall methyl from 34.1 % to
+37.6 %, without touching the residue assignment or the envelope. Where no shared firm
+partner separates the pair, the swap stays a genuine coin flip inside the envelope.
 
 ## MAGIC (sibling engine)
 

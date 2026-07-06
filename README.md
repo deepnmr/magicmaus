@@ -250,7 +250,7 @@ methyl deposit) via `make_peaklists.py --shifts-tsv`.
 | REC3 | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2 % | 60.0 % | 57.6 % | 52.9 % | **100 %** |
 | MBP  | 7114 / 1ANF  | AILMTV | 192 | 5.7 % | 26.6 % | 87.0 % | 87.5 % | 93.2 % | **100 %** |
 | MSG  | SI / 1D8C    | ILV | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
-| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | 2.4 % | 0.0 % | 31.8 % | 34.1 % | n.r. | 98.8 % |
+| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | 2.4 % | 0.0 % | 35.3 % | 37.6 % | n.r. | 98.8 % |
 
 † **TNF-α is the one real-experimental, multimeric target** — genuine methyl-NMR
 peak lists of the tumour-necrosis-factor-α homotrimer against an AlphaFold3
@@ -267,9 +267,11 @@ not 100 %; (2) **multimer handling is load-bearing** — parsed as a single prot
 keeping all three chains as symmetry images (contact = min distance over subunits)
 explains 9 of them and recovers 98.8 % (84/85). On this dense trimer the plain
 carbon-only firm match is UNSAT at tight tolerance, so committed accuracy comes from
-a greedy max-feasible hard set (34 % methyl / 55 % residue); the optional HMBC lever
-is *not* a net help here — only one link matches and it over-constrains the SAT
-(n.r.).
+a greedy max-feasible hard set plus a geminal intensity-ratio resolver (I ~ 1/r⁶: the
+stronger NOE to a shared partner belongs to the closer methyl), which breaks Leu/Val
+δ1/δ2 swaps and lifts the committed call to 37.6 % methyl / 55 % residue (Leu/Val
+22.6 → 27.4 %); the optional HMBC lever is *not* a net help — only one link matches
+and it over-constrains the SAT (n.r.).
 
 MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
 the rest — its coverage is the envelope column. The **100 % envelope holds on

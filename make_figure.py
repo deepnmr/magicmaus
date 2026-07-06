@@ -65,7 +65,7 @@ arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6
 # (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged, envelope%)
 # TNF-alpha is the one real-experimental / multimer target, matched at H+-0.01/C+-0.05
 # with reciprocal symmetric NOESY pairing: envelope 98.8%, MAUS 0 unique, magicmaus
-# +soft 34.1%, MAGIC single-protomer 2.4%.
+# +soft+geminal 37.6%, MAGIC single-protomer 2.4%.
 DATA = [
   ('Ubq', 43, 9.3, 34.9, 100.0, True, 100.0),
   ('HNH', 57, 12.3, 26.3, 86.0, True, 100.0),
@@ -74,7 +74,7 @@ DATA = [
   ('REC3', 85, None, 8.2, 57.6, False, 100.0),
   ('MBP', 192, 5.7, 26.6, 87.5, True, 100.0),
   ('MSG', 257, None, 1.6, 33.5, False, 100.0),
-  ('TNFα*', 85, 2.4, 0.0, 34.1, True, 98.8),
+  ('TNFα*', 85, 2.4, 0.0, 37.6, True, 98.8),
 ]
 x = range(len(DATA))
 w = 0.26

@@ -242,13 +242,21 @@ is what makes even this bound attainable: the plain carbon-only firm match — r
 the partner by carbon alone — collects mutually inconsistent hard edges on this dense
 trimer and is UNSAT outright, so it commits nothing; pairing each row with its
 reciprocal resolves both ends by full (C,H) and every retained edge is a real
-methyl–methyl contact.) Committed accuracy is 34.1% methyl (31.8% before soft
+methyl–methyl contact.) Committed accuracy is 37.6% methyl (35.3% before soft
 evidence) and 55.3% at residue level — short of the simulated targets, as expected for
-a boolean-dominated (H)CCH network scored against a predicted fold. The 21-point
-methyl-vs-residue gap is entirely geminal swaps: right residue, wrong δ1/δ2 or γ1/γ2
-(Table 3). The optional HMBC lever does *not* help this run — only one geminal link
-matches the peaks at H±0.01/C±0.05, and adding it to the already max-feasible commit
-set tips the SAT infeasible rather than orienting the pairs (Table 1, n.r.).
+a boolean-dominated (H)CCH network scored against a predicted fold. The methyl-vs-
+residue gap is entirely geminal swaps: right residue, wrong δ1/δ2 or γ1/γ2 (Table 3).
+Because the scoring objective's global optimum is *not* the truth here (climbing it —
+more annealing restarts, or a normalized objective — lowers accuracy, since real
+intensities against a predicted fold do not pin the true distances), the swaps are
+broken instead by a deterministic geminal resolver: for each Leu/Val pair whose two
+methyls are both committed, the peak with the stronger NOE cross peak to a shared
+partner Q takes the methyl structurally closer to Q (I ~ 1/r⁶), a local 2-way flip
+that raises Leu/Val methyl accuracy from 22.6% to 27.4% (Leu 25→33%) and overall
+methyl from 34.1% to 37.6% without disturbing the residue assignment or the envelope.
+The optional HMBC lever does *not* help this run — only one geminal link matches the
+peaks at H±0.01/C±0.05, and adding it to the already max-feasible commit set tips the
+SAT infeasible rather than orienting the pairs (Table 1, n.r.).
 
 **Table 1.** Methyl-level accuracy on seven structure-simulated targets plus one
 real-experimental multimer (TNF-α), all engines scored on the same 1/r^6^
@@ -266,7 +274,7 @@ max-feasible commit set, tipping the SAT infeasible).
 | REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
 | MBP | 7114 / 1ANF | AILMTV | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
 | MSG | SI† / 1D8C | ILV | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
-| TNF-α‡ | real / AF3 trimer | AILTV | 85 | 2.4% | 0.0% | 31.8% | 34.1% | n.r. | 98.8% |
+| TNF-α‡ | real / AF3 trimer | AILTV | 85 | 2.4% | 0.0% | 35.3% | 37.6% | n.r. | 98.8% |
 
 †MSG methyl shifts have no BMRB deposit; they are digitised from the reference
 assignment table in the open-access Supplementary Information of Pritišanac *et
@@ -339,16 +347,18 @@ single-methyl, are NOE-poor on MBP.
 | REC3 | 54% (7/13) | 52% (26/50) | 73% (16/22) | — | — | — | 58% (49/85) |
 | MBP | 100% (22/22) | 97% (58/60) | 95% (38/40) | 68% (30/44) | 70% (14/20) | 100% (6/6) | 88% (168/192) |
 | MSG | 44% (18/41) | 32% (42/133) | 31% (26/83) | — | — | — | 33% (86/257) |
-| TNF-α | 100% (8/8) | 25% (9/36) | 19% (5/26) | 50% (6/12) | 33% (1/3) | — | 34% (29/85) |
+| TNF-α | 100% (8/8) | 33% (12/36) | 19% (5/26) | 50% (6/12) | 33% (1/3) | — | 38% (32/85) |
 
-The real-data TNF-α row (symmetric-NOESY engine at H±0.01/C±0.05) makes the type
-dependence stark even as overall accuracy is modest on this sparse network: Ile (no
-geminal partner) is assigned outright at 100% (8/8), while Leu (25%) and Val (19%)
-lag — the firm NOEs cannot orient the geminal pairs, so most Leu/Val calls are the
-`ambiguous` coin flip landing on the wrong δ/γ methyl (they stay inside the MAUS
-envelope; only the intensity signal, weak here, could break the tie). The
-residue-level accuracy is 55% (47/85): the 21-point gap to the 34% methyl-level
-figure is entirely geminal swaps — right residue, wrong δ1/δ2 or γ1/γ2.
+The real-data TNF-α row (symmetric-NOESY engine at H±0.01/C±0.05, with the geminal
+intensity-ratio resolver) makes the type dependence stark even as overall accuracy is
+modest on this sparse network: Ile (no geminal partner) is assigned outright at 100%
+(8/8), while Leu (33%) and Val (19%) lag — the firm NOEs cannot fully orient the
+geminal pairs. The geminal resolver (I ~ 1/r⁶: the stronger NOE to a shared partner
+belongs to the closer methyl) lifts Leu from 25 to 33% and Leu/Val together from 22.6
+to 27.4%; the residual is where no shared firm partner separates δ1/δ2 (or γ1/γ2),
+which stays inside the MAUS envelope as a genuine coin flip. The residue-level accuracy
+is 55% (47/85): the gap to the 38% methyl-level figure is entirely these unresolved
+geminal swaps — right residue, wrong δ1/δ2 or γ1/γ2.
 
 Resolving the accuracy to the individual prochiral methyl (Table 3) confirms that
 the residual Leu/Val error is a geminal swap rather than random misassignment: on
@@ -378,7 +388,7 @@ target's labeling.
 | REC3 | 54% (7/13) | 52% (13/25) | 52% (13/25) | 73% (8/11) | 73% (8/11) | — | — | — |
 | MBP | 100% (22/22) | 97% (29/30) | 97% (29/30) | 95% (19/20) | 95% (19/20) | 68% (30/44) | 70% (14/20) | 100% (6/6) |
 | MSG | 44% (18/41) | 33% (22/67) | 30% (20/66) | 31% (13/42) | 32% (13/41) | — | — | — |
-| TNF-α | 100% (8/8) | 22% (4/18) | 28% (5/18) | 15% (2/13) | 23% (3/13) | 50% (6/12) | 33% (1/3) | — |
+| TNF-α | 100% (8/8) | 28% (5/18) | 39% (7/18) | 15% (2/13) | 23% (3/13) | 50% (6/12) | 33% (1/3) | — |
 
 The same geminal-swap lens revises how the MAUS column should be read. MAUS's
 decisive fraction (Table 1, MAUS) counts only peaks pinned to a single *methyl*, so
