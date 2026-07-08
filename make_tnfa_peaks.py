@@ -1,0 +1,245 @@
+"""Peak-pick the TNF-alpha .ucsf methyl spectra, type the peaks with the
+label-selective spectra (removing tag peaks), and emit magicmaus HMQC input.
+
+Type logic (labelings):
+  ILVAT  = I,L,V,A,T  (tag-free master list)
+  ILV    = I,L,V      (tag-free)
+  Val    = V          (has an N-terminal tag -> extra Val peaks)
+  Thr    = T,I        (has tag)
+  => A,T = ILVAT - ILV ;  T = (A,T) matched in Thr ;  A = (A,T) not in Thr
+     V   = ILV matched in Val
+     I   = ILV matched in Thr
+     L   = ILV - V - I
+Tag peaks are the Val/Thr peaks with no ILVAT partner: they never match the
+tag-free master, so they are dropped automatically.
+"""
+import sys
+from pathlib import Path
+
+import numpy as np
+
+import maus
+import ucsf
+
+D = Path('examples/TNFa')
+
+
+def pick(path, k=25.0, min_h=None):
+  """2D local-maxima peak pick. Returns [(c_ppm, h_ppm, height)] sorted by height."""
+  data, axes = ucsf.read(path)
+  c_ax, h_ax = axes[0], axes[1]
+  noise = np.median(np.abs(data))
+  thr = k * noise if min_h is None else min_h
+  # local maxima vs 8-neighbourhood
+  d = data
+  m = (d > thr)
+  m[1:-1, 1:-1] &= (d[1:-1, 1:-1] >= d[:-2, 1:-1]) & (d[1:-1, 1:-1] >= d[2:, 1:-1]) \
+      & (d[1:-1, 1:-1] >= d[1:-1, :-2]) & (d[1:-1, 1:-1] >= d[1:-1, 2:]) \
+      & (d[1:-1, 1:-1] >= d[:-2, :-2]) & (d[1:-1, 1:-1] >= d[2:, 2:]) \
+      & (d[1:-1, 1:-1] >= d[:-2, 2:]) & (d[1:-1, 1:-1] >= d[2:, :-2])
+  m[0, :] = m[-1, :] = m[:, 0] = m[:, -1] = False
+  peaks = []
+  for i, j in zip(*np.where(m)):
+    # parabolic sub-pixel refine in each axis
+    di = _refine(d[i - 1, j], d[i, j], d[i + 1, j])
+    dj = _refine(d[i, j - 1], d[i, j], d[i, j + 1])
+    peaks.append((float(c_ax.ppm(i + di)), float(h_ax.ppm(j + dj)), float(d[i, j])))
+  peaks.sort(key=lambda p: -p[2])
+  return _dedup(peaks)
+
+
+def _dedup(peaks, tol_c=0.06, tol_h=0.012):
+  """Drop weaker peaks within (tol_c, tol_h) of a kept stronger one (same methyl
+  picked twice as shoulders)."""
+  kept = []
+  for c, h, ht in peaks:                      # already height-desc
+    if any(abs(c - kc) <= tol_c and abs(h - kh) <= tol_h for kc, kh, _ in kept):
+      continue
+    kept.append((c, h, ht))
+  return kept
+
+
+def _refine(ym, y0, yp):
+  denom = ym - 2 * y0 + yp
+  return 0.0 if denom == 0 else np.clip(0.5 * (ym - yp) / denom, -0.5, 0.5)
+
+
+def pick_3d(path, k=40.0, vol_box=None):
+  """3D local-maxima pick. Returns [(ppm_ax0, ppm_ax1, ppm_ax2, intensity)].
+  intensity = peak height, or the box-integrated **volume** if vol_box=(wc,wh)
+  is given (sum over ±wc points on both carbon axes, ±wh on the proton axis,
+  negatives clipped) — a better NOE-intensity estimate than a single point."""
+  data, axes = ucsf.read(path)
+  noise = np.median(np.abs(data))
+  thr = k * noise
+  c = data[1:-1, 1:-1, 1:-1]
+  m = c > thr
+  for di in (-1, 0, 1):
+    for dj in (-1, 0, 1):
+      for dk in (-1, 0, 1):
+        if di == dj == dk == 0:
+          continue
+        sl = data[1 + di:c.shape[0] + 1 + di, 1 + dj:c.shape[1] + 1 + dj,
+                  1 + dk:c.shape[2] + 1 + dk]
+        m &= c >= sl
+  idx = np.argwhere(m)
+  peaks = []
+  for (i, j, kk) in idx:
+    i, j, kk = i + 1, j + 1, kk + 1
+    if vol_box is None:
+      inten = float(data[i, j, kk])
+    else:
+      wc, wh = vol_box
+      b = data[max(0, i - wc):i + wc + 1, max(0, j - wc):j + wc + 1,
+               max(0, kk - wh):kk + wh + 1]
+      inten = float(b.clip(min=0).sum())
+    peaks.append((float(axes[0].ppm(i)), float(axes[1].ppm(j)),
+                  float(axes[2].ppm(kk)), inten))
+  peaks.sort(key=lambda p: -p[3])
+  return peaks
+
+
+def write_noesy(path, k=10.0, tol_c=0.15, out='noesy_picked.tsv'):
+  """Pick a 3D NOESY-HMQC (ax0=C1 partner, ax1=C2 observed, ax2=H); drop diagonal
+  and keep only **symmetric** cross peaks — a real methyl-methyl NOE appears both
+  ways, (C1,C2,·) and (C2,C1,·).  This rejects the one-sided picking noise that
+  makes the SAT UNSAT, so all symmetric edges can be used (no artificial top-N
+  cap needed) with the never-exclude envelope intact.  Intensity is the
+  box-integrated volume (better than height for the MAGIC-style scoring)."""
+  pk = [p for p in pick_3d(path, k, vol_box=(3, 1)) if abs(p[0] - p[1]) >= 0.05]
+  sym = [(c1, c2, h2, ht) for (c1, c2, h2, ht) in pk
+         if any((a, b) != (c1, c2) and abs(c2 - a) <= tol_c and abs(c1 - b) <= tol_c
+                for a, b, _, _ in pk)]
+  lines = ['label\tC1\tC2\tH2\tintensity']
+  for i, (c1, c2, h2, ht) in enumerate(sym, 1):
+    lines.append(f'X{i}\t{c1:.3f}\t{c2:.3f}\t{h2:.3f}\t{ht:.6g}')
+  (D / out).write_text('\n'.join(lines) + '\n')
+  print(f'NOESY: {len(pk)} cross peaks, {len(sym)} symmetric -> {D}/{out}')
+  return len(sym)
+
+
+def matches(peak, plist, tol_c=0.10, tol_h=0.02):
+  c, h, _ = peak
+  return any(abs(c - pc) <= tol_c and abs(h - ph) <= tol_h for pc, ph, _ in plist)
+
+
+def geminal_partners(ilvat, hmbc3d, tol_c=0.15, tol_h=0.02):
+  """Find each master peak's geminal partner via the 3D HMBC (peaks = (C_a, C_b,
+  H)).  Both carbons and the proton are present, so the observed methyl is pinned
+  unambiguously by (C,H) — cleaner than a 2D (C_partner,H) list.  For an
+  off-diagonal HMBC peak the axis whose (C,H) uniquely matches an HMQC peak is the
+  observed methyl; the other carbon is its geminal partner.  Only Leu/Val pair;
+  Ile/Ala/Thr (single methyl) return None.  Returns {index -> partner index}."""
+  part = {i: None for i in range(len(ilvat))}
+  for (c0, c1, h, _) in hmbc3d:
+    if abs(c0 - c1) < 0.3:                      # diagonal (methyl to itself)
+      continue
+    for cobs, cpar in ((c0, c1), (c1, c0)):
+      obs = [i for i, (ca, ha, _) in enumerate(ilvat)
+             if abs(ca - cobs) <= tol_c and abs(ha - h) <= tol_h]
+      if len(obs) != 1:
+        continue
+      cand = [j for j, (cb, _, _) in enumerate(ilvat)
+              if j != obs[0] and abs(cb - cpar) <= tol_c
+              and abs(cb - ilvat[obs[0]][0]) > 0.3]
+      if cand:
+        part[obs[0]] = min(cand, key=lambda j: abs(ilvat[j][0] - cpar))
+  return part
+
+
+def validate(rows):
+  """Compare picked+typed peaks to the known truth key by ppm match."""
+  truth = []
+  for l in (D / 'hmqc_true.tsv').read_text().splitlines()[1:]:
+    f = l.split('\t')
+    truth.append((float(f[1]), float(f[2]), f[3], f[4]))   # h, c, type, label
+  picked = [(h, c, t) for h, c, t, _ in rows]
+  used = [False] * len(picked)
+  rec = typeok = 0
+  for th, tc, tt, _ in truth:
+    best = None
+    for i, (h, c, t) in enumerate(picked):
+      if used[i] or abs(c - tc) > 0.10 or abs(h - th) > 0.02:
+        continue
+      d = abs(c - tc) + abs(h - th)
+      if best is None or d < best[0]:
+        best = (d, i, t)
+    if best:
+      used[best[1]] = True
+      rec += 1
+      if best[2] == tt:
+        typeok += 1
+  print(f'validate: recovered {rec}/{len(truth)} true peaks; '
+        f'type correct {typeok}/{rec}; spurious {sum(1 for u in used if not u)} picked-unmatched')
+
+
+def main():
+  kk = {'ILVAT': 65, 'ILV': 110, 'Val': 7, 'Thr': 10}
+  # cap master list below the structural methyl count (89 in the trimer protomer
+  # set) so the injective SAT stays feasible; extra picks are noise/tag.
+  CAP = 88
+  ilvat = pick(D / 'TNFa_ILVAT_13C_HMQC.ucsf', kk['ILVAT'])[:CAP]
+  ilv = pick(D / 'TNFa_ILV_13C_HMQC.ucsf', kk['ILV'])
+  val = pick(D / 'TNFa_Val_Methyl_HMQC.ucsf', kk['Val'])
+  thr = pick(D / 'TNFa_Thr_Methyl_HMQC.ucsf', kk['Thr'])
+  hmbc = pick_3d(D / 'TNFa_ILVAT_HMBC_HMQC.ucsf', 30)
+  part = geminal_partners(ilvat, hmbc)
+  print(f'picked: ILVAT={len(ilvat)} ILV={len(ilv)} Val={len(val)} Thr={len(thr)} '
+        f'HMBC3D={len(hmbc)} geminal-linked={sum(1 for v in part.values() if v is not None)}')
+
+  # Ile delta1 is the only methyl with 13C below ~17 ppm (Ile 12.8-15.8;
+  # every other type >= 18.3), so type it by chemical shift, not the Thr sample
+  # (whose 13C window clips the low-delta1 Ile).
+  # HMBC geminal link separates the paired types (Leu/Val) from the single-methyl
+  # types (Ile/Ala/Thr): a peak with a geminal partner is L or V; without one it
+  # is I/A/T.  Val is confirmed by the Val sample, and propagated across the
+  # geminal link (if a peak's partner is Val, so is it).
+  ILE_C_MAX = 17.0
+  rows = []
+  counts = {}
+  for i, pk in enumerate(ilvat):
+    c13 = pk[0]
+    partner = part[i]
+    is_val = matches(pk, val) or (partner is not None and matches(ilvat[partner], val))
+    if c13 < ILE_C_MAX:
+      t = 'I'
+    elif is_val:
+      t = 'V'
+    elif partner is not None:  # geminal pair, not Val -> Leu
+      t = 'L'
+    elif matches(pk, thr):     # single methyl in Thr sample -> Thr
+      t = 'T'
+    elif matches(pk, ilv):     # in ILV, no partner picked -> Leu/Val, default Leu
+      t = 'L'
+    else:                      # single, not in ILV -> Ala
+      t = 'A'
+    counts[t] = counts.get(t, 0) + 1
+    rows.append((pk[1], pk[0], t, pk[2]))   # h_ppm, c_ppm, res_type, height
+
+  print('typed(raw):', counts, 'total', len(rows))
+
+  # cap each type to its structural methyl capacity (injective SAT needs
+  # peaks_of_type <= methyls_of_type); keep the strongest peaks per type.
+  lab = maus.parse_labeling('A;I;L;M;T;V')
+  methyls = maus.parse_structure((D / 'fold_tnfa_trimer_model_0.cif').read_text().splitlines(), lab)
+  cap = {}
+  for m in methyls:
+    cap[m.res_type] = cap.get(m.res_type, 0) + 1
+  kept = []
+  for t in set(r[2] for r in rows):
+    same = sorted([r for r in rows if r[2] == t], key=lambda r: -r[3])   # height desc
+    kept += same[:cap.get(t, 0)]
+  print('capacity:', cap)
+  print('typed(capped):', {t: sum(1 for r in kept if r[2] == t) for t in sorted(set(r[2] for r in kept))}, 'total', len(kept))
+  validate(kept)
+  rows = kept
+  out = ['label\tH_ppm\tC_ppm\tres_type']
+  for i, (h, c, t, _) in enumerate(sorted(rows, key=lambda r: (r[2], r[1])), 1):
+    out.append(f'P{i}\t{h:.3f}\t{c:.3f}\t{t}')
+  (D / 'hmqc_picked.tsv').write_text('\n'.join(out) + '\n')
+  print(f'wrote {D}/hmqc_picked.tsv')
+  write_noesy(D / 'TNFa_ILVAT_NOESY_HMQC.ucsf')
+
+
+if __name__ == '__main__':
+  main()

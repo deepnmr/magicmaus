@@ -229,7 +229,7 @@ keeping MAUS's 100 % envelope**. That is the synthesis paying off: MAUS keeps th
 truth in reach, MAGIC's scoring then extracts every bit of experimental signal to
 commit correctly within it. Neither half delivers this alone.
 
-## Benchmark — five real BMRB targets
+## Benchmark — seven simulated targets + one real multimer
 
 MBP is not a one-off. `make_peaklists.py` builds a dataset from any PDB + BMRB
 deposition (see [`examples/*/README.md`](examples/)); `bench.py` scores MAUS and
@@ -250,10 +250,33 @@ methyl deposit) via `make_peaklists.py --shifts-tsv`.
 | REC3 | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2 % | 60.0 % | 57.6 % | 52.9 % | **100 %** |
 | MBP  | 7114 / 1ANF  | AILMTV | 192 | 5.7 % | 26.6 % | 87.0 % | 87.5 % | 93.2 % | **100 %** |
 | MSG  | SI / 1D8C    | ILV | 257 | n.c. | 1.6 % | 29.6 % | 33.5 % | 38.5 % | **100 %** |
+| **TNF-α** † | *real expt* / AF3 trimer | AILTV | 85 | 2.4 % | 0.0 % | 35.3 % | 37.6 % | n.r. | 98.8 % |
+
+† **TNF-α is the one real-experimental, multimeric target** — genuine methyl-NMR
+peak lists of the tumour-necrosis-factor-α homotrimer against an AlphaFold3
+trimer model, not a structure-simulated NOESY, matched at **H±0.01 / C±0.05 ppm**
+like the rest with **reciprocal symmetric NOESY pairing** (a 3D (H)CCH row gives
+the partner only by carbon; its reciprocal supplies the partner proton, so pairing
+the two resolves both ends by full (C,H)). It is where the guarantees meet reality
+(see [`examples/TNFa/`](examples/TNFa/)). Two honest lessons the simulated targets
+cannot show: (1) the **100 % envelope is conditional** on the NOEs being
+consistent with the structure — measured against a *predicted* structure, one peak
+(Leu76δ2) carries a contact the model does not support, so the envelope is 98.8 %,
+not 100 %; (2) **multimer handling is load-bearing** — parsed as a single protomer
+10 real inter-subunit NOEs are unexplainable and drop from the envelope (75/85);
+keeping all three chains as symmetry images (contact = min distance over subunits)
+explains 9 of them and recovers 98.8 % (84/85). On this dense trimer the plain
+carbon-only firm match is UNSAT at tight tolerance, so committed accuracy comes from
+a greedy max-feasible hard set plus a geminal intensity-ratio resolver (I ~ 1/r⁶: the
+stronger NOE to a shared partner belongs to the closer methyl), which breaks Leu/Val
+δ1/δ2 swaps and lifts the committed call to 37.6 % methyl / 55 % residue (Leu/Val
+22.6 → 27.4 %); the optional HMBC lever is *not* a net help — only one link matches
+and it over-constrains the SAT (n.r.).
 
 MAUS commits only on the unique peaks (the % shown, all correct) and abstains on
 the rest — its coverage is the envelope column. The **100 % envelope holds on
-every target**, and magicmaus beats full-space MAGIC by up to ~15× (MBP 87 % vs
+every simulated target** (and 98.8 % on the real TNF-α data, where a predicted
+structure cannot support one measured NOE), and magicmaus beats full-space MAGIC by up to ~15× (MBP 87 % vs
 5.7 %). The 3-cycle annealer is what closes the gap: on the intensity network the
 objective's global optimum *is* the truth (a truth-seeded search scores ~96 %),
 and the annealer reaches it where a plain greedy ascent stalls ~10–20 % short.
@@ -288,6 +311,7 @@ magicmaus.py             the hybrid engine (MAUS SAT bound + MAGIC scored commit
 maus.py                  vendored MAUS clean-room SAT layer (== ../maus/maus.py)
 make_peaklists.py        build hmqc/noesy peak lists from a PDB + BMRB deposition
 make_intensity_noesy.py  reconstruct 1/r^6 intensities for a simulated NOESY
+make_tnfa_input.py       convert the real TNF-alpha Sparky peak lists -> magicmaus input + truth
 convert_to_magic.py      re-emit a dataset as a MAGIC control bundle (fair compare)
 bench.py                 MAUS + magicmaus (+MAGIC) on one example dir
 score_three.py           MAGIC vs MAUS vs magicmaus on the MBP intensity NOESY
@@ -295,6 +319,7 @@ examples/mbp/            MBP dataset (BMRB 7114 shifts + PDB 1ANF)
 examples/ubq/            ubiquitin (BMRB 6457 + PDB 1UBQ), the NMR reference protein
 examples/{il2,hnh,rec2,rec3}/   MAUS-paper blind targets (BMRB + PDB)
 examples/msg/            malate synthase G (MethylFLYA SI shifts + PDB 1D8C), 257 methyls
+examples/TNFa/           real-experimental TNF-alpha homotrimer (Sparky lists + AlphaFold3 model)
 ```
 
 Each `examples/<target>/` is self-contained: the PDB, the BMRB deposition

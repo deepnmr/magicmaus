@@ -74,13 +74,13 @@ def structure_weights(methyls, gem, short_g, long_g) -> Dict[Tuple[int, int], fl
   dict keyed by ordered index pairs for the union of edge classes; this is the
   ``model_matrix`` of the QAP objective, graded by distance instead of boolean.
   """
-  coord = {m.index: m.coord for m in methyls}
+  by_idx = {m.index: m for m in methyls}
   weights: Dict[Tuple[int, int], float] = {}
   for (a, b) in gem:
     weights[(a, b)] = None  # placeholder -> filled with global max below
   finite_max = 0.0
   for (a, b) in short_g | long_g:
-    d = math.dist(coord[a], coord[b])
+    d = maus.min_dist(by_idx[a], by_idx[b])   # min over chain images (multimer)
     w = 1.0 / (d ** 6) if d > 0 else 0.0
     weights[(a, b)] = w
     finite_max = max(finite_max, w)

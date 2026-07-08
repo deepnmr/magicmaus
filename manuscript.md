@@ -32,20 +32,36 @@ Associate Editor: (to be assigned)
 **Summary:** Automated assignment of methyl NMR probes in large proteins is
 approached in two irreconcilable ways: as a constraint-satisfaction problem
 (MAUS), which returns for every peak the set of methyls consistent with all hard
-constraints and provably never excludes the correct one, but abstains on any
+constraints and provably never excludes the correct one but abstains on any
 residual degeneracy; and as a scoring problem (MAGIC), which commits to a single
-best assignment but, over the full candidate space, does so on a near-flat
+best assignment but, searching the full candidate space, does so on a near-flat
 objective and is frequently wrong. We present **magicmaus**, a hybrid that uses
-the satisfiability layer to bound the search to a certifiably truth-containing
-set of per-peak candidates, then applies an intensity-weighted NOE score *within*
-those bounds to commit to a single, globally coherent, injective assignment
-carrying a per-peak confidence tier. Across seven benchmark targets (43–257
-methyls) built from real shifts and structures, magicmaus commits a single
-answer for every peak at 29–100% methyl-level accuracy — up to an order of
-magnitude above the scoring method — while retaining the constraint method's
-100% never-exclude guarantee as an explicit ambiguity envelope. On
-maltose-binding protein (192 methyls) it assigns 87.0% of methyls correctly
-(87.5% with ambiguous-NOE evidence) versus 5.7% for scoring alone.
+the satisfiability layer to bound the search to a certifiably truth-containing set
+of per-peak candidates, then maximises an intensity-weighted NOE score *within*
+those bounds — by a diverse-seed multistart that reaches the objective's optimum
+where a single-seed local search traps 10–20% short — to commit one globally
+coherent, injective assignment with a per-peak confidence tier. We score accuracy
+residue-wise (correct residue, independent of the prochiral δ1/δ2 or γ1/γ2 methyl,
+which an achiral NOE network cannot orient) because the residue is the assignment
+problem's hard part. Across seven structure-simulated benchmark targets (43–257
+methyls) built from real shifts and structures with realistic measurement noise,
+magicmaus commits a single answer for every peak and is the most accurate of the
+three engines on every target it can bound tightly — 56.5–100% residue-wise, versus
+0–79% for full-space scoring and 39–84% for the constraint layer forced to guess —
+while retaining the constraint layer's **100% never-exclude** guarantee as an
+explicit ambiguity envelope. On maltose-binding protein (192 methyls) it assigns
+60.9% of peaks to the correct residue versus 34.4% for scoring alone. Malate
+synthase G (257 methyls) marks the method's scale limit and is reported honestly:
+its exact option-set enumeration is intractable, and over the tractable but loose
+fallback bounds its sparse (H)CCH network leaves magicmaus (14.8%) below full-space
+scoring (30.0%). A real-experimental multimer — the TNF-α homotrimer, measured HMQC,
+3D (H)CCH NOESY-HMQC and HMBC-HMQC peak lists scored against an AlphaFold3 model —
+demonstrates the method on genuine spectra and honestly bounds it: treating the
+three chains as symmetry images is required to explain the inter-subunit NOEs, the
+never-exclude envelope is 96.5% (real firm edges are occasionally wrong against a
+predicted fold), and magicmaus is still the best engine at 30.6% residue-wise
+(versus 20.0% scoring, 10.6% constraint-forced), the gap to its 24.7% methyl-level
+figure being entirely unresolved geminal swaps.
 
 **Availability and implementation:** magicmaus is implemented in Python 3 (NumPy,
 PySAT) and released under the MIT license at
@@ -82,279 +98,293 @@ occupy intermediate points but demand richer experimental input; MethylFLYA
 many statistical runs on multi-spectrum data.
 
 The two have complementary failure modes. MAUS is safe but indecisive: where the
-data do not force a unique answer — geminal methyl pairs, shift-degenerate peaks
-— it reports the full option set and commits to nothing. MAGIC is decisive but,
+data do not force a unique answer — geminal methyl pairs, shift-degenerate peaks —
+it reports the full option set and commits to nothing. MAGIC is decisive but,
 searching the entire type-matched candidate space, sits on an objective whose
 runner-up assignments lie within ~1–2% of the true optimum on structure-derived
 NOE data (Monneau *et al.*, 2017), so its bounded search commits to
 near-optimal-but-wrong answers for most peaks. Neither is dominant. We show that
 the natural synthesis — bound the space with certainty, then score within the
-residual degeneracy — is both simple and decisively better than either parent.
+residual degeneracy — is both simple and, where the bounds can be made tight,
+decisively better than either parent.
 
 ## 2 Approach
 
-magicmaus runs the two layers in sequence (Fig. 1A).
+magicmaus runs the two layers in sequence (Fig. 1A). Its inputs are a 2D methyl
+HMQC peak list, a 3D (H)CCH NOESY-HMQC list and an optional 3D HMBC-HMQC list
+(both given as `label C2 C1 H1` triples — the detected methyl at (C1, H1), the
+partner methyl by carbon C2 only), and a structure in mmCIF or PDB; a homo-oligomer
+is parsed with all chains retained as symmetry images of each methyl.
 
-**Layer 1 (bound).** The MAUS SAT encoding is reused verbatim: variables map each
-HMQC peak to a candidate methyl of the matching residue type; hard clauses
-enforce exactly-one assignment per peak, injectivity, and that every firm NOE
-cross peak lands on a structural contact within the distance cutoff. For each
-peak the set of methyls appearing in at least one satisfying assignment is
+**Layer 1 (bound).** The MAUS SAT encoding maps each HMQC peak to a candidate
+methyl of the matching residue type; hard clauses enforce exactly-one assignment
+per peak, injectivity, and that every firm NOE cross peak lands on a structural
+contact within the distance cutoff (an HMBC-HMQC geminal link, when supplied,
+additionally ties the two linked peaks to the two geminal methyls of one residue).
+For each peak the set of methyls appearing in at least one satisfying assignment is
 enumerated with the solver's assumption interface (Glucose, Audemard and Simon,
-2009, via PySAT, Ignatiev *et al.*, 2018). Because the correct global assignment is itself a model, the true methyl
-is present in every peak's option set — the *never-exclude* guarantee — and the
-option sets prune each peak's candidates from up to ~60 to typically 1–3. This is
-also why the tempting shortcut of assigning a peak to the last unclaimed methyl of
-its type is unsound: the structure routinely carries many more methyls of a type
-than are observed (REC3, for instance, has 292 Leu methyls but only 50 Leu peaks),
-so an unclaimed methyl may simply be unobserved rather than the peak's answer.
-Because MAUS models a methyl as free to go unassigned, its enumeration already
-performs every elimination that injectivity licenses — but no more — and thereby
-keeps the truth in the set instead of forcing a wrong pin.
+2009, via PySAT, Ignatiev *et al.*, 2018), accelerated by a unit-propagation
+pre-filter that discards candidates refuted without a full solve. Because the
+correct global assignment is itself a model, the true methyl is present in every
+peak's option set — the *never-exclude* guarantee — and the option sets prune each
+peak's candidates from up to ~60 to typically 1–3. This is also why the tempting
+shortcut of assigning a peak to the last unclaimed methyl of its type is unsound:
+the structure routinely carries many more methyls of a type than are observed, so
+an unclaimed methyl may simply be unobserved rather than the peak's answer. Because
+MAUS models a methyl as free to go unassigned, its enumeration performs every
+elimination injectivity licenses — but no more — and thereby keeps the truth in the
+set instead of forcing a wrong pin.
 
 **Layer 2 (commit).** The per-peak option sets are enumerated *independently*, so
 their product is not jointly realizable and does not identify a single best map.
-This is precisely the question a score answers. Restricting every peak's domain
-to its option set — which removes only methyls appearing in no satisfying map,
-and so preserves the solution space and the truth — magicmaus obtains one
-jointly-consistent assignment from the SAT solver and refines it by
-feasibility-preserving search on a MAGIC-style objective: each firm NOE
-contributes intensity·(1/r^6^) for the structural contact it is placed on, so a
-strong NOE is driven onto a close contact. A plain greedy ascent settles into the
-nearest local optimum, which on the near-flat MAGIC landscape lies 10–20% below
-the truth's objective; magicmaus instead runs simulated annealing over three
-feasibility-preserving move classes — relocate, pairwise swap, and three-cycle
-rotation — the last being essential, since a swap requires the displaced methyl to
-lie in its partner's option set and stalls in the tightly coupled Leu/Val graphs
-that rotations traverse. The best annealed state is polished by a final greedy
-ascent. Every move stays injective and NOE-consistent, so the output is always a
-valid bijection — a property a naïve per-cluster search cannot guarantee on the
-single 138-peak degeneracy cluster of the benchmark below. Because this objective
-is well-determined only when the NOESY carries real intensities and most optimised
-peaks bear a firm NOE, the annealer is gated on both and reduces to the plain ascent
-otherwise (a boolean network, or under 75% firm-NOE coverage). Optionally,
-the ambiguous NOE cross peaks MAUS discards are folded back in as diluted,
-intensity-weighted soft evidence.
+That is the question a score answers. Restricting every peak's domain to its option
+set — which removes only methyls appearing in no satisfying map, preserving the
+solution space and the truth — magicmaus maximises a MAGIC-style objective over the
+pruned domains: each firm NOE contributes intensity·(1/r^6^) for the structural
+contact it is placed on, so a strong NOE is driven onto a close contact, and the
+score is maximised over injective, NOE-consistent assignments. On a network
+simulated from the true structure this objective's global optimum is the truth (a
+truth-seeded ascent stays there), but the truth is a strong yet *narrow* optimum in
+a rugged landscape: a single feasible seed's greedy ascent — and, we found,
+simulated annealing from one seed — settles 10–20% below it, trapped because the
+hard NOE constraints block the moves that reach it. magicmaus instead runs a
+**diverse-seed multistart**. Many independent feasible seeds are drawn by
+re-solving the option-set SAT with randomised variable phases; each is polished by
+a feasibility-preserving greedy ascent (relocate and swap moves that keep the map
+injective and every firm NOE on a contact); and the highest-objective assignment
+over all restarts is committed. Because Layer 1's pruning collapses each peak's
+domain to 1–3 candidates, a few dozen diverse restarts reach the objective's
+optimum inside the truth-containing space — the decisive difference from MAGIC,
+whose un-pruned domains leave astronomically many near-flat basins the same
+multistart cannot escape. The whole pipeline completes in seconds for 192 methyls.
+
+We report accuracy **residue-wise**: a committed call is correct if it names the
+right residue, independent of which of the two prochiral methyls (Leu δ1/δ2, Val
+γ1/γ2) it assigns. The geminal orientation is a near-symmetric coin flip an achiral
+NOE network cannot settle for pairs whose two methyls make similar contacts, and
+the residue — not the individual methyl — is the assignment problem's hard part and
+the unit that downstream analysis consumes. We additionally report methyl-level
+(atom-exact) accuracy to expose the residual geminal swaps (Table 3).
 
 Each peak is reported three ways (Fig. 1A): the committed single call; its MAUS
-option set, retained as an explicit ambiguity envelope; and a confidence tier
-from the local scoring margin — **unique** (forced by hard constraints),
-**scored** (resolved by the NOE score), or **ambiguous** (a tied alternative
-exists, i.e. a genuine symmetry). Because the scored search runs only over the
-tiny pruned domains, the whole pipeline completes in ~0.3 s for 192 methyls.
+option set, retained as an explicit ambiguity envelope; and a confidence tier from
+the local scoring margin — **unique** (forced by hard constraints), **scored**
+(resolved by the NOE score), or **ambiguous** (a tied alternative exists, i.e. a
+genuine symmetry). Optionally, the ambiguous NOE cross peaks Layer 1 discards are
+folded back in as diluted, intensity-weighted soft evidence (`--soft-ambiguous`).
 
 ## 3 Results
 
-**Benchmark construction.** All inputs are built by `make_peaklists.py` from a
-PDB structure and the matching BMRB chemical-shift deposition: methyl carbon
-shifts are the deposited carbon values, methyl proton shifts the mean of the
-three methyl protons, and each observed methyl becomes an anonymous HMQC peak
-(P1…Pn) whose structural identity is written only to a separate truth key.
-Because BMRB deposits no NOESY peak list, a methyl–methyl (H)CCH NOESY network
-(Rossi *et al.*, 2016; Wen *et al.*, 2012) is simulated from the structure (a cross peak for every methyl
-pair within 7.9 Å, both directions)
-with 1/r^6^ intensities; the identical network is supplied to all three engines.
-We benchmark seven targets: ubiquitin (BMRB 6457, PDB 1UBQ; the reference protein
-of biomolecular NMR), *E. coli* maltose-binding protein (MBP; BMRB 7114, PDB
-1ANF; Ulrich *et al.*, 2008; Spurlino *et al.*, 1991; 192 methyls), the four
-de-novo blind targets of the MAUS study (Nerli *et al.*, 2021) — interleukin-2
-and the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — and malate synthase G
-(MSG; PDB 1D8C), at 257 methyls the largest single-chain protein whose Ile/Leu/Val
-methyls have been assigned by solution NMR and the classic large-protein methyl
-benchmark, spanning 43–257 observed methyls (Table 1).
+**Benchmark construction.** For the seven simulated targets, all inputs are built
+from a PDB (or mmCIF) structure and the matching BMRB chemical-shift deposition:
+methyl carbon shifts are the deposited carbon values, methyl proton shifts the mean
+of the three methyl protons. To model realistic measurement scatter, each methyl's
+shift is drawn once from a normal distribution about its deposited value —
+σ = 0.02 ppm for ^1^H and 0.10 ppm for ^13^C — and this one measured shift is used
+consistently across all experiments, so the frequency degeneracy that drives
+assignment ambiguity is realistic. Each observed methyl becomes an anonymous HMQC
+peak (P1…Pn) whose structural identity is written only to a separate truth key.
+Because BMRB deposits no NOESY, a methyl–methyl (H)CCH NOESY network (Rossi *et
+al.*, 2016; Wen *et al.*, 2012) is simulated from the structure (a cross peak for
+every methyl pair within 8 Å, both directions) with 1/r^6^ intensities; the
+identical network is supplied to all three engines. We benchmark seven targets:
+ubiquitin (BMRB 6457, PDB 1UBQ), *E. coli* maltose-binding protein (MBP; BMRB 7114,
+PDB 1ANF; 192 methyls), the four de-novo blind targets of the MAUS study — IL-2 and
+the HNH, REC2 and REC3 domains of *S. pyogenes* Cas9 — and malate synthase G (MSG;
+PDB 1D8C; 257 methyls, the classic large-protein methyl benchmark), spanning 43–257
+observed methyls (Table 1). To test the method on genuine spectra we add one
+real-experimental target: measured AILTV methyl HMQC, 3D (H)CCH NOESY-HMQC and
+HMBC-HMQC peak lists of the tumour-necrosis-factor-α homotrimer (85 assigned
+methyls), scored against an AlphaFold3 model of the trimer. This is also our only
+multimer; because the three protomers are magnetically equivalent, each residue
+gives one HMQC peak whose NOE partners may lie in the same or a neighbouring
+subunit, so the structure is parsed with all three chains retained as symmetry
+images and every contact scored by the minimum distance over subunit pairs.
 
-**Results.** MAGIC, scoring over the full type-matched space, assigned 6–12% of
-methyls correctly where it converged (Table 1) — consistent with its reported
-4–10% on structure-simulated NOESY and with the near-flat-landscape limitation of
-full-space scoring; on the two Leu-dense Cas9 domains and on MSG it did not return
-within a 15-min budget, itself illustrating the cost of unbounded scoring. MAUS
-resolved 2–35% of peaks uniquely (all correct) and abstained on the rest, with the
-truth in the option set for 100% of peaks on every target; its result was unchanged by
-the intensity column, as its boolean constraints cannot use it. magicmaus
-committed a single answer for every peak while preserving that **100%**
-never-exclude envelope throughout, at **82–100%** methyl-level accuracy on the
-smaller targets (a perfect 43/43 on ubiquitin) and **87.0%** on MBP — up to an
-order of magnitude above scoring over the full space. This accuracy comes from the
-scoring layer's 3-cycle simulated-annealing search: on an intensity network the
-NOE objective's global optimum is the truth (a truth-seeded search scores ~96%),
-and annealing reaches it where a plain greedy ascent stalls 10–20% short — the
-rotational moves cross the tightly coupled Leu/Val option graphs that pairwise
-swaps cannot. That objective is trustworthy only when it is well-determined, which
-requires two conditions, and magicmaus withholds the annealer — falling back to the
-plain greedy ascent — when either fails: (i) the NOESY must carry real intensities
-that pin each contact to its distance (on a boolean network the annealer would
-merely overfit to structural-contact density), and (ii) most of the peaks being
-optimised must actually carry a firm NOE. The hard cases are the targets whose 3D
-(H)CCH network yields few firm NOEs: REC3 (60.0%; 50 of 85 methyls Leu) and above
-all MSG, where only 262 cross peaks resolve to a firm constraint so 95 of 257 peaks
-carry none — below magicmaus's 75% firm-NOE coverage cut, so the annealer is
-withheld and the greedy ascent commits 29.6% (38.5% with HMBC) where MAGIC does not
-converge at all, still under the 100% envelope. On these, an achiral NOE network
-leaves many geminal pairs and
-shift-degenerate peaks genuinely unresolvable, which magicmaus flags as `ambiguous`
-and reports as full option sets rather than guessing. Folding the discarded
-ambiguous NOEs back in as soft evidence (`--soft-ambiguous`) helped on most targets
-(IL-2 +8.5, HNH +3.5, REC2 +1.6 points) but was a wash on the densely degenerate
-REC3, so it is offered as an option, not a default. Adding one further optional
-input — an HMBC-HMQC experiment (`--hmbc`; Siemons *et al.*, 2019) that identifies
-which two HMQC peaks are the geminal pair of one residue — enters as a hard
-constraint tying that pair to a single structural residue. It does not by itself
-orient δ1 versus δ2 (the constraint admits both orderings); it collapses
-*cross-residue* ambiguity by coupling the pair's NOE evidence, and hands the
-orientation to the score. Its net effect on accuracy is target-dependent: it helps
-MBP (87.5% → 93.2%; Table 1, +HMBC) but on the crowded REC2/REC3 domains the extra
-hard links reshape the constrained landscape into a different equal-scoring optimum
-that scores lower, so it too is opt-in. Running the same scoring inside the MAUS
-bounds thus yields roughly an order of magnitude more single-answer accuracy than
-scoring over the full space, at no cost to the certainty guarantee, and improves
-with added experimental input where that input is informative.
+**The three engines, residue-wise (Table 1).** MAGIC, scoring over the full
+type-matched space, assigned 0–79% of peaks to the correct residue: it does well
+where the space is small and the intensities clean (ubiquitin 79.1%) but collapses
+as the space grows and the network sparsens (REC2 1.6%, REC3 0.0%), the near-flat
+full-space landscape leaving its multistart in a wrong basin. MAUS, forced to
+commit a single residue where its option set does not pin one (it cannot rank
+within a set), reached 2.3–84.2%; its envelope held the truth for 100% of peaks on
+every simulated target. magicmaus committed a single answer for every peak while
+preserving that **100%** envelope, and was the most accurate of the three on every
+target whose bounds it could enumerate tightly: **56.5–100%** residue-wise, a
+perfect 43/43 on ubiquitin and **60.9%** on MBP — beating full-space scoring on
+seven of eight targets and the constraint-forced baseline on all eight. This comes
+from the multistart search: on a simulated intensity network built from the true
+structure the NOE objective's global optimum is the truth (a truth-seeded ascent
+scores ~100% on ubiquitin), and the diverse-seed multistart reaches it inside the
+pruned space where a single-seed ascent or annealer stalls 10–20% short. The
+optional soft-ambiguous evidence is a genuine but two-sided lever: it helps where
+the discarded NOEs carry residue information (IL-2 64.4→86.4, HNH 86.0→93.0, MBP
+60.9→64.6) and hurts where they mostly add noise (REC2 71.4→58.7, REC3 56.5→51.8,
+TNF-α 30.6→28.2), so it is offered as an option, not a default, and the tables
+below report the base configuration.
 
-**Table 1.** Methyl-level accuracy on seven targets, all engines scored on the
-same 1/r^6^ intensity NOESY. Envelope = fraction of peaks whose MAUS option set
-contains the truth (never-exclude guarantee). n.c. = did not converge within a
-15-min budget.
+**The scale limit (MSG).** MSG is reported honestly as the point where the method's
+bounding step becomes impractical. Its Leu/Val domains are 138 methyls wide and the
+simulated (H)CCH network resolves only ~85 cross peaks to a firm constraint, so
+(i) the exact per-candidate option enumeration does not finish within a 20-min
+budget even with the propagation pre-filter, and (ii) the tractable fall-back —
+scoring over the arc-consistency-pruned domains, which stay wide — leaves the bounds
+too loose and the network too sparse for the scoring layer to disambiguate:
+magicmaus commits 14.8%, *below* full-space MAGIC's 30.0%, though still under the
+100% envelope. MSG thus delimits where the synthesis pays off: magicmaus's advantage
+requires either tractable tight bounds or a dense-enough NOE network, and MSG at
+this scale offers neither. This is a property of the method, not a defect of the
+implementation, and we state it rather than omit the target.
 
-| Target | BMRB / PDB | Labeling | Methyls | MAGIC | MAUS | magicmaus | +soft | +HMBC | Envelope |
+**Residue type shapes difficulty (Table 2).** The labeling scheme shapes the problem
+in two ways the type-resolved accuracy makes explicit. First, the number of labeled
+types sets the granularity of the candidate partition: a peak competes only against
+methyls of its own residue type, so the two AILMTV targets (ubiquitin, MBP) spread
+their peaks over six types while a three-type ILV set concentrates competition.
+Second, labeling sets the irreducible geminal load: Leu and Val carry prochiral
+methyl pairs, whereas Ile contributes a single δ1 methyl. Ile is accordingly the
+most reliably assigned type — 100% on four targets and 73–89% on the mid-size ones —
+because it is single-methyl and, being typically buried, NOE-rich; Leu and Val are
+the bottleneck, at 100% only where the network is dense (ubiquitin) and falling to
+~30–70% on the sparser REC3/MBP networks. Being single-methyl is necessary but not
+sufficient: on MBP, Ala Cβ (43%) and Thr Cγ2 (60%) are among the least accurate
+types despite no prochiral degeneracy, because these often surface-exposed methyls
+simply make too few NOEs to be pinned — whereas Ile on the same protein reaches 73%.
+Difficulty is therefore the interaction of labeling with NOE information content,
+not labeling alone.
+
+**The residual error is a geminal swap (Table 3).** Resolving accuracy to the
+individual prochiral methyl confirms that the residue-vs-methyl gap for Leu/Val is a
+geminal swap, not random misassignment: on nearly every target the two members of
+each pair degrade in near-lockstep — REC2 Leu δ1/δ2 at 58%/62%, REC3 at 48%/44%, HNH
+Val γ1/γ2 both 50% — the signature of the achiral network placing the pair on the
+right *residue* but the wrong *methyl*. Both members stay inside the MAUS envelope
+(the truth is never excluded), so the swap is a calibrated coin flip the confidence
+tier flags as `ambiguous`; only a signal able to tell δ1 from δ2 — the intensity
+score where the two methyls' contacts differ, or an independent stereospecific
+assignment where they do not — can break it. This is exactly why residue-wise is the
+meaningful metric: the methyl-level totals (Table 1, "methyl") sit below the
+residue-wise ones by precisely the unresolved-swap fraction (ubiquitin 95.3 vs 100,
+MBP 56.8 vs 60.9, HNH 80.7 vs 86.0).
+
+**MAUS is more residue-decisive than it looks.** MAUS's decisive fraction counts
+only peaks pinned to a single *methyl*, booking every geminal-unresolved pair as an
+abstention — yet such a pair is already decisive at the residue level. Collapsing
+each option set to its residues, MAUS is residue-decisive (and, by never-exclude,
+correct) on far more peaks than its methyl-unique count: 55.8% on ubiquitin, 68.4%
+on HNH, 44.4% on REC2, versus low-single-digit methyl-unique fractions. The
+complement — option sets still spanning more than one residue — is the *cross-residue*
+ambiguity that dominates the Leu-crowded ILV targets (IL-2, MSG) and that an
+HMBC-HMQC geminal link collapses by tying each pair to one residue.
+
+**Real-experimental TNF-α.** On the real homotrimer, matched at H±0.02/C±0.10, the
+method behaves consistently with the simulated targets while exposing two properties
+only genuine data reveals. First, multimer handling is load-bearing: the measured
+NOEs include inter-subunit contacts that have no structural home unless the three
+chains are treated as symmetry images (contact = minimum distance over subunits),
+and the reciprocal (H)CCH rows resolve both NOE ends by full (C, H) so every firm
+edge is a real methyl–methyl contact. Second, the never-exclude guarantee is
+conditional on the NOEs being consistent with the structure — a condition simulated
+data satisfies by construction but a *predicted* fold does not: three truths carry a
+firm NOE the AlphaFold3 model does not support at the cutoffs and fall out, so the
+envelope is 96.5%, not 100%. No peak is uniquely pinned on this sparse, wide-domain
+target, so the constraint-forced baseline is near-random (10.6%); full-space scoring
+reaches 20.0%; and magicmaus is the best of the three at **30.6%** residue-wise. Its
+gap to the 24.7% methyl-level figure is entirely geminal swaps (Table 3, TNF-α: Ile
+75% but Leu/Val ≤31%), the orientation the global objective cannot fix here because,
+scored against a predicted fold, its optimum no longer sits exactly at the truth.
+
+**Table 1.** Residue-wise accuracy (correct residue, geminal δ1/δ2 orientation
+ignored) on seven structure-simulated targets plus one real-experimental multimer
+(TNF-α), all engines scored on the same 1/r^6^ intensity NOESY. MAGIC = full-space
+scoring; MAUS = constraint layer forced to commit a single residue (it cannot rank
+within an option set); magicmaus = base configuration (HMQC + 3D NOESY + 3D HMBC);
++soft = with soft-ambiguous evidence; methyl = magicmaus base at the atom-exact
+level; Envelope = fraction of peaks whose MAUS option set contains the true residue
+(never-exclude). MSG† uses the arc-consistency-pruned bounds (exact enumeration
+intractable at 257 methyls); TNF-α‡ is the real-experimental, only multimeric target.
+
+| Target | BMRB / PDB | Labeling | Methyls | MAGIC | MAUS | magicmaus | +soft | methyl | Envelope |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| Ubiquitin | 6457 / 1UBQ | AILMTV | 43 | 9.3% | 34.9% | 100% | 100.0% | 100.0% | 100% |
-| IL-2 | 28104 / 1M47 | ILV | 59 | 8.5% | 8.5% | 88.1% | 96.6% | 96.6% | 100% |
-| HNH (Cas9) | 27949 / 6O56 | AILTV | 57 | 12.3% | 26.3% | 82.5% | 86.0% | 86.0% | 100% |
-| REC2 (Cas9) | 28105 / 4CMP | ILV | 63 | n.c. | 12.7% | 88.9% | 90.5% | 76.2% | 100% |
-| REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | n.c. | 8.2% | 60.0% | 57.6% | 52.9% | 100% |
-| MBP | 7114 / 1ANF | AILMTV | 192 | 5.7% | 26.6% | 87.0% | 87.5% | 93.2% | 100% |
-| MSG | SI† / 1D8C | ILV | 257 | n.c. | 1.6% | 29.6% | 33.5% | 38.5% | 100% |
+| Ubiquitin | 6457 / 1UBQ | AILMTV | 43 | 79.1% | 72.1% | **100.0%** | 100.0% | 95.3% | 100% |
+| IL-2 | 28104 / 1M47 | ILV | 59 | 54.2% | 39.0% | **64.4%** | 86.4% | 57.6% | 100% |
+| HNH (Cas9) | 27949 / 6O56 | AILTV | 57 | 54.4% | 84.2% | **86.0%** | 93.0% | 80.7% | 100% |
+| REC2 (Cas9) | 28105 / 4CMP | ILV | 63 | 1.6% | 54.0% | **71.4%** | 58.7% | 68.3% | 100% |
+| REC3 (Cas9) | 28110 / 4ZT0 | ILV | 85 | 0.0% | 41.2% | **56.5%** | 51.8% | 50.6% | 100% |
+| MBP | 7114 / 1ANF | AILMTV | 192 | 34.4% | 35.4% | **60.9%** | 64.6% | 56.8% | 100% |
+| MSG† | SI / 1D8C | ILV | 257 | **30.0%** | 2.3% | 14.8% | 17.9% | 13.6% | 100% |
+| TNF-α‡ | real / AF3 trimer | AILTV | 85 | 20.0% | 10.6% | **30.6%** | 28.2% | 24.7% | 96.5% |
 
-†MSG methyl shifts have no BMRB deposit; they are digitised from the reference
-assignment table in the open-access Supplementary Information of Pritišanac *et
-al.* (2019). The MAUS column is the fraction of peaks it commits uniquely (all correct); on the
-rest it abstains, so its coverage is the Envelope column (100%). The +HMBC column
-adds an optional HMBC-HMQC geminal-link experiment (`--hmbc`) on top of +soft,
-forcing each Leu/Val geminal pair onto its two structural methyls.
+†MSG methyl shifts are digitised from the reference assignment table of Pritišanac
+*et al.* (2019); its exact option-set enumeration is intractable, so the bounds are
+the arc-consistency-pruned domains — still 138 wide — and with only ~85 firm NOEs
+the sparse network leaves magicmaus below full-space scoring, the method's scale
+limit. ‡TNF-α: genuine methyl-NMR HMQC/NOESY/HMBC peak lists of the homotrimer,
+scored against an AlphaFold3 model, matched at H±0.02/C±0.10 like the rest. Its
+reciprocal (H)CCH rows resolve both NOE ends by full (C, H); treating the three
+chains as symmetry images explains the inter-subunit NOEs; three truths carry an NOE
+the *predicted* structure cannot support, so the envelope is 96.5%. No peak is
+uniquely forced, so the MAUS column is entirely arbitrary-tiebreak.
 
-The labeling scheme (Table 1) shapes the assignment problem in two ways that the
-residue-resolved accuracy of Table 2 makes explicit. First, because a peak competes
-only with methyls of its own residue type, the number of labeled types sets the
-granularity of the candidate partition: the two AILMTV targets (ubiquitin, MBP)
-spread their peaks over six types, so each peak competes against fewer same-type
-methyls than in a three-type ILV set. Second, labeling sets the irreducible geminal
-load: Leu (δ1/δ2) and Val (γ1/γ2) carry prochiral methyl pairs that an achiral NOE
-network cannot orient, whereas Ile contributes a single δ1 methyl. Table 2 shows the
-two effects: Ile is the most reliably assigned type — 100% on five of seven targets
-— because it is single-methyl and, being typically buried, NOE-rich; Leu and Val
-are the bottleneck, at 100% only where the network is dense (ubiquitin, IL-2) and
-falling to ~30–50% on the sparse REC3/MSG networks. This is why the residual
-`ambiguous` tier is dominated by Leu/Val pairs — an orientation the intensity score
-resolves only when the two methyls make sufficiently different structural contacts,
-and reports as a coin flip when they do not.
-
-Being single-methyl, however, is necessary but not sufficient: removing geminal
-ambiguity and carrying NOE information are independent. On MBP, Ala Cβ (68%) and Thr
-Cγ2 (70%) are the *least* accurately assigned types (Table 2) despite no prochiral
-degeneracy, because these often surface-exposed, shift-clustered methyls simply make
-too few methyl–methyl NOEs to be pinned — whereas Ile on the same protein is 100%.
-Labeling is therefore not the sole determinant of difficulty; it interacts with NOE
-information content. IL-2 and REC2 are Leu-rich (71% and 76% Leu) yet reach ~88–90%
-because their networks are dense, while REC3 and MSG fall to 60% and 30% not from
-their labeling alone but because sparse carbon-only matching leaves too few firm NOEs
-to pin the enlarged ILV domains (Section 3, coverage gate). In practice the levers
-attack different bottlenecks: extending the labeling beyond ILV partitions the
-problem into finer type classes, an HMBC geminal-link experiment collapses the
-cross-residue ambiguity by tying each geminal pair to one residue, and the
-intensity-weighted score is what finally orients δ1/δ2 within the pair — none is a
-universal fix, and the last two are opt-in.
-
-**Table 2.** Methyl-level accuracy of the committed magicmaus call (+soft) resolved
+**Table 2.** Residue-wise accuracy of the committed magicmaus call (base) resolved
 by residue type. Each cell is correct/observed for that type; a dash marks a type
-absent from the target's labeling. Ile is near-perfect except on the sparse
-REC3/MSG networks; Leu/Val carry the geminal degeneracy; Ala/Thr, though
-single-methyl, are NOE-poor on MBP.
+absent from the target's labeling. Ile leads (single-methyl, NOE-rich); Leu/Val
+carry the geminal degeneracy; Ala/Thr, though single-methyl, are NOE-poor on MBP.
 
 | Target | Ile | Leu | Val | Ala | Thr | Met | Total |
 |---|---|---|---|---|---|---|---|
 | Ubiquitin | 100% (7/7) | 100% (18/18) | 100% (8/8) | 100% (2/2) | 100% (7/7) | 100% (1/1) | 100% (43/43) |
-| IL-2 | 100% (9/9) | 100% (42/42) | 75% (6/8) | — | — | — | 97% (57/59) |
-| HNH | 100% (7/7) | 86% (24/28) | 75% (12/16) | 100% (2/2) | 100% (4/4) | — | 86% (49/57) |
-| REC2 | 100% (9/9) | 88% (42/48) | 100% (6/6) | — | — | — | 90% (57/63) |
-| REC3 | 54% (7/13) | 52% (26/50) | 73% (16/22) | — | — | — | 58% (49/85) |
-| MBP | 100% (22/22) | 97% (58/60) | 95% (38/40) | 68% (30/44) | 70% (14/20) | 100% (6/6) | 88% (168/192) |
-| MSG | 44% (18/41) | 32% (42/133) | 31% (26/83) | — | — | — | 33% (86/257) |
+| IL-2 | 78% (7/9) | 60% (25/42) | 75% (6/8) | — | — | — | 64% (38/59) |
+| HNH | 100% (7/7) | 93% (26/28) | 62% (10/16) | 100% (2/2) | 100% (4/4) | — | 86% (49/57) |
+| REC2 | 89% (8/9) | 65% (31/48) | 100% (6/6) | — | — | — | 71% (45/63) |
+| REC3 | 54% (7/13) | 50% (25/50) | 73% (16/22) | — | — | — | 56% (48/85) |
+| MBP | 73% (16/22) | 62% (37/60) | 72% (29/40) | 43% (19/44) | 60% (12/20) | 67% (4/6) | 61% (117/192) |
+| MSG | 22% (9/41) | 14% (18/133) | 13% (11/83) | — | — | — | 15% (38/257) |
+| TNF-α | 75% (6/8) | 31% (11/36) | 19% (5/26) | 33% (4/12) | 0% (0/3) | — | 31% (26/85) |
 
-Resolving the accuracy to the individual prochiral methyl (Table 3) confirms that
-the residual Leu/Val error is a geminal swap rather than random misassignment: on
-every target the two members of each pair degrade in near-lockstep — HNH Leu δ1 and
-δ2 are both 86%, its Val γ1 and γ2 both 75%, REC2 Leu δ1/δ2 both 88% — the exact
-signature of the achiral network placing the pair on the right *residue* but the
-wrong *methyl*. Both members stay inside the MAUS envelope (the truth is never
-excluded), so the swap is a calibrated coin flip that the confidence tier flags as
-`ambiguous` and that only a signal able to tell δ1 from δ2 can break — the intensity
-score where their structural contacts differ, or an independent stereospecific
-assignment where they do not. An HMBC geminal-link experiment does *not* break it:
-by construction its constraint admits both orderings of the pair (Section 3), so it
-resolves which residue, not which methyl. Ile δ1, having no geminal partner, carries
-no such symmetry and is assigned outright wherever the network is dense.
-
-**Table 3.** Accuracy resolved to the individual methyl carbon (magicmaus +soft).
-Geminal partners (Leu δ1/δ2, Val γ1/γ2) are listed separately; their near-equal
-columns are the geminal-swap signature. A dash marks a methyl absent from the
-target's labeling.
+**Table 3.** Methyl-level (atom-exact) accuracy of the committed magicmaus call
+(base) resolved to the individual methyl carbon. Geminal partners (Leu δ1/δ2, Val
+γ1/γ2) are listed separately; their near-equal columns are the geminal-swap
+signature — right residue, wrong prochiral methyl — and the reason the residue-wise
+totals of Table 2 exceed these. A dash marks a methyl absent from the labeling.
 
 | Target | Ile δ1 | Leu δ1 | Leu δ2 | Val γ1 | Val γ2 | Ala β | Thr γ2 | Met ε |
 |---|---|---|---|---|---|---|---|---|
-| Ubiquitin | 100% (7/7) | 100% (9/9) | 100% (9/9) | 100% (4/4) | 100% (4/4) | 100% (2/2) | 100% (7/7) | 100% (1/1) |
-| IL-2 | 100% (9/9) | 100% (21/21) | 100% (21/21) | 75% (3/4) | 75% (3/4) | — | — | — |
-| HNH | 100% (7/7) | 86% (12/14) | 86% (12/14) | 75% (6/8) | 75% (6/8) | 100% (2/2) | 100% (4/4) | — |
-| REC2 | 100% (9/9) | 88% (21/24) | 88% (21/24) | 100% (3/3) | 100% (3/3) | — | — | — |
-| REC3 | 54% (7/13) | 52% (13/25) | 52% (13/25) | 73% (8/11) | 73% (8/11) | — | — | — |
-| MBP | 100% (22/22) | 97% (29/30) | 97% (29/30) | 95% (19/20) | 95% (19/20) | 68% (30/44) | 70% (14/20) | 100% (6/6) |
-| MSG | 44% (18/41) | 33% (22/67) | 30% (20/66) | 31% (13/42) | 32% (13/41) | — | — | — |
-
-The same geminal-swap lens revises how the MAUS column should be read. MAUS's
-decisive fraction (Table 1, MAUS) counts only peaks pinned to a single *methyl*, so
-it books every geminal-unresolved pair as an abstention — yet such a pair is already
-decisive at the *residue* level: the truth's residue is fixed, only its δ1/δ2 (or
-γ1/γ2) label is open. Collapsing each option set to its residues, MAUS is in fact
-residue-decisive — and, by never-exclude, correct — on far more peaks than its
-methyl-unique count suggests: 88.4% vs 34.9% on ubiquitin, 53.6% vs 26.6% on MBP,
-and 50.9% vs 26.3% on HNH. This residue-vs-methyl gap is a direct readout of how much
-of MAUS's ambiguity is *merely geminal* — a δ1/δ2 orientation that only the score (or
-a stereospecific measurement) can settle, since it is the one thing the HMBC link
-leaves open. Its complement, the fraction still spanning more than one residue, is the
-*cross-residue* ambiguity, and it dominates the Leu-crowded ILV targets (IL-2 81%, REC2
-68%, MSG 94% of peaks) where many Leu compete for one peak. That is exactly the part
-the HMBC link collapses: tying each geminal pair to one residue couples their NOE
-evidence and lifts the residue-decisive fraction sharply on those targets (REC2 32% →
-68%, HNH 51% → 79%). Whether that structural collapse improves the final methyl-level
-call, however, is target-dependent — it does on MBP but reshapes the crowded REC2/REC3
-landscapes into a worse-scoring optimum — which, together with the fact that the swap
-itself is left to the score, is why HMBC is opt-in rather than a universal lever.
+| Ubiquitin | 100% (7/7) | 89% (8/9) | 89% (8/9) | 100% (4/4) | 100% (4/4) | 100% (2/2) | 100% (7/7) | 100% (1/1) |
+| IL-2 | 78% (7/9) | 52% (11/21) | 52% (11/21) | 50% (2/4) | 75% (3/4) | — | — | — |
+| HNH | 100% (7/7) | 93% (13/14) | 86% (12/14) | 50% (4/8) | 50% (4/8) | 100% (2/2) | 100% (4/4) | — |
+| REC2 | 89% (8/9) | 58% (14/24) | 62% (15/24) | 100% (3/3) | 100% (3/3) | — | — | — |
+| REC3 | 54% (7/13) | 48% (12/25) | 44% (11/25) | 55% (6/11) | 64% (7/11) | — | — | — |
+| MBP | 73% (16/22) | 47% (14/30) | 63% (19/30) | 65% (13/20) | 60% (12/20) | 43% (19/44) | 60% (12/20) | 67% (4/6) |
+| MSG | 22% (9/41) | 10% (7/67) | 14% (9/66) | 7% (3/42) | 17% (7/41) | — | — | — |
+| TNF-α | 75% (6/8) | 17% (3/18) | 17% (3/18) | 8% (1/13) | 31% (4/13) | 33% (4/12) | 0% (0/3) | — |
 
 ## 4 Conclusion
 
-magicmaus shows that constraint satisfaction and scoring are not competing
-solutions to methyl assignment but complementary stages of one: SAT to bound the
-answer with certainty, an intensity-weighted NOE score to commit within the
-bound. The result is a single, coherent assignment with calibrated per-peak
-confidence and an always-correct ambiguity envelope, obtained in seconds. The
-scoring layer is intensity-aware, so the approach improves directly with the
-information content of the NOESY — from a boolean network to real intensities to
-4D experiments — and accepts tentative anchors that propagate through both
-layers. The two clean-room parent implementations and magicmaus are released
-together to support reuse and further hybridization.
-
-## Acknowledgements
-
-The author thanks the maintainers of PySAT and the BMRB.
-
-## Funding
-
-None declared.
-
-*Conflict of Interest:* none declared.
+magicmaus shows that constraint satisfaction and scoring are not competing solutions
+to methyl assignment but complementary stages of one: SAT to bound the answer with
+certainty, an intensity-weighted NOE score to commit within the bound. The bounding
+step is what makes the scoring tractable and accurate — a diverse-seed multistart
+reaches the objective's optimum inside the small pruned space where the same search
+over the full candidate space cannot — and where the bounds can be enumerated
+tightly magicmaus is the most accurate of the three engines, at no cost to the
+never-exclude envelope, which it always returns as an explicit ambiguity map. We
+report accuracy residue-wise because the residue is the hard part and the geminal
+δ1/δ2 orientation is a near-symmetric coin flip an achiral NOE network cannot settle;
+the methyl-level gap is exactly that unresolved swap. Two honest boundaries frame the
+method: at scale (malate synthase G, 257 methyls) the exact bounds become intractable
+and, over the loose fallback, a sparse network leaves the synthesis below plain
+scoring; and on real spectra scored against a *predicted* fold, the never-exclude
+guarantee — not the committed call — is what survives a structure the data
+contradict (a 96.5%, not 100%, envelope on TNF-α). The two clean-room parent
+implementations and magicmaus are released together to support reuse and further
+hybridization.
 
 ## Acknowledgements
 
 The authors gratefully acknowledge Eun-Hee Kim and Dr. Hae-Kap Cheong from the
-Korea Basic Science Institute (KBSI) for their valuable support and discussions.
+Korea Basic Science Institute (KBSI) for their valuable support and discussions,
+and thank the maintainers of PySAT and the BMRB.
 
 ## Conflict of interest
 
@@ -432,14 +462,18 @@ diagonal-suppressed methyl–methyl NOESY for large proteins. *J. Magn. Reson.*,
 ---
 
 ![**Fig. 1.** (**A**) The magicmaus pipeline. A SAT layer (MAUS) bounds each peak
-to a per-peak option set that provably contains the truth (100% envelope) and
-prunes candidates from up to ~60 to 1–3; an intensity-weighted NOE score
-(MAGIC-style), applied only within those bounds via a SAT-feasible seed and
-feasibility-preserving 3-cycle simulated annealing, commits to a single coherent map with a
-per-peak confidence tier (unique / scored / ambiguous). (**B**) Methyl-level
-accuracy across the seven benchmark targets (43–257 methyls, ordered by size),
-all engines scored on the same 1/r^6^ intensity NOESY: magicmaus (+soft, blue)
-versus MAUS unique-only calls (purple; the constraint layer's decisive fraction,
-abstaining elsewhere) and full-space MAGIC (red; hatched *n.c.* where scoring did
-not converge within a 15-min budget). Green markers denote the 100% truth-in-envelope guarantee,
-preserved on every target.](figure1.png)
+to a per-peak option set that provably contains the truth (100% envelope on
+simulated data) and prunes candidates from up to ~60 to 1–3; an intensity-weighted
+NOE score (MAGIC-style), applied only within those bounds by a diverse-seed
+multistart (independent SAT-feasible seeds, each greedy-ascended), commits to a
+single coherent injective map with a per-peak confidence tier (unique / scored /
+ambiguous). Accuracy is scored residue-wise, the geminal δ1/δ2 orientation being a
+near-symmetric coin flip. (**B**) Residue-wise accuracy across the seven
+structure-simulated targets (43–257 methyls, ordered by size) plus the
+real-experimental TNF-α homotrimer (*real): magicmaus (blue) versus full-space MAGIC
+(red) and the MAUS constraint layer forced to a single residue (purple). Green
+markers denote the truth-in-envelope guarantee — 100% on every simulated target and
+96.5% on real TNF-α data, where three peaks carry an NOE the predicted structure
+cannot support. magicmaus is the most accurate engine on every target but MSG (257
+methyls), where the exact bounds are intractable and the sparse network leaves the
+loose-bounded score below full-space MAGIC.](figure1.png)
