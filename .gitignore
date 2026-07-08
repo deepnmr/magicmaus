@@ -21,3 +21,10 @@ TUTORIAL_MBP.html
 
 # raw spectra (large binaries)
 *.ucsf
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# throwaway probe scripts
+scratchpad_*.py

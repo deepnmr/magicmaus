@@ -52,7 +52,7 @@ gsA.text(4.95, 5.75, 'pruned domains\n(mostly 1–3 candidates)', ha='right', va
 rect(gsA, 3.55, 2.35, 3.15, 2.85, '#fdf0e2', ORANGE)
 gsA.text(5.12, 4.82, 'MAGIC-style scoring', ha='center', fontsize=7.8, weight='bold', color=ORANGE)
 gsA.text(5.12, 4.42, 'intensity · (1/r$^6$)', ha='center', fontsize=6.8, style='italic', color=ORANGE)
-gsA.text(5.12, 3.35, 'SAT-feasible seed +\n3-cycle annealing\n→ single coherent map',
+gsA.text(5.12, 3.35, 'diverse-seed multistart\n(SAT-phase seeds + ascent)\n→ single coherent map',
          ha='center', va='center', fontsize=6.6, color='#1a1a1a')
 # output tiers
 gsA.text(8.68, 6.35, 'single call + confidence', ha='center', fontsize=6.8, style='italic', color='#333')
@@ -62,19 +62,21 @@ tierbox(gsA, 7.55, 1.65, 2.25, 1.05, 'ambiguous', 'true symmetry', '#f3f4f6', GR
 arrow(gsA, 6.75, 4.3, 7.5, 5.45); arrow(gsA, 6.75, 3.8, 7.5, 3.82); arrow(gsA, 6.75, 3.3, 7.5, 2.2)
 
 # --- Panel B: seven-target benchmark (same intensity NOESY) ---
-# (target, methyls, MAGIC%, MAUS-unique%, magicmaus+soft%, MAGIC-converged, envelope%)
-# TNF-alpha is the one real-experimental / multimer target, matched at H+-0.01/C+-0.05
-# with reciprocal symmetric NOESY pairing: envelope 98.8%, MAUS 0 unique, magicmaus
-# +soft+geminal 37.6%, MAGIC single-protomer 2.4%.
+# (target, methyls, MAGIC%, MAUS-forced%, magicmaus%, MAGIC-converged, envelope%)
+# Residue-wise accuracy (base magicmaus). MAGIC is the diverse-seed multistart over
+# the full type-matched space and now converges on every target. TNF-alpha is the
+# one real-experimental / multimer target (predicted AF3 trimer), matched at
+# H+-0.02/C+-0.10: envelope 96.5% (three peaks carry an NOE the predicted structure
+# cannot support), magicmaus 30.6% (best), MAGIC 20.0%, MAUS-forced 10.6%.
 DATA = [
-  ('Ubq', 43, 9.3, 34.9, 100.0, True, 100.0),
-  ('HNH', 57, 12.3, 26.3, 86.0, True, 100.0),
-  ('IL-2', 59, 8.5, 8.5, 96.6, True, 100.0),
-  ('REC2', 63, None, 12.7, 90.5, False, 100.0),
-  ('REC3', 85, None, 8.2, 57.6, False, 100.0),
-  ('MBP', 192, 5.7, 26.6, 87.5, True, 100.0),
-  ('MSG', 257, None, 1.6, 33.5, False, 100.0),
-  ('TNFα*', 85, 2.4, 0.0, 37.6, True, 98.8),
+  ('Ubq', 43, 79.1, 72.1, 100.0, True, 100.0),
+  ('HNH', 57, 54.4, 84.2, 86.0, True, 100.0),
+  ('IL-2', 59, 54.2, 39.0, 64.4, True, 100.0),
+  ('REC2', 63, 1.6, 54.0, 71.4, True, 100.0),
+  ('REC3', 85, 0.0, 41.2, 56.5, True, 100.0),
+  ('MBP', 192, 34.4, 35.4, 60.9, True, 100.0),
+  ('MSG', 257, 30.0, 2.3, 14.8, True, 100.0),
+  ('TNFα*', 85, 20.0, 10.6, 30.6, True, 96.5),
 ]
 x = range(len(DATA))
 w = 0.26
@@ -90,18 +92,18 @@ for i, (_lab, _n, mg, ma, mm, conv, env) in enumerate(DATA):
 axB.axhline(100, ls=':', lw=0.9, color='#999', zorder=1)
 # 'envelope = 100%' below the line on the left, clear of the markers on the line
 axB.text(-0.55, 92, 'envelope 100%', ha='left', fontsize=5.6, color='#2e9e6b')
-# TNF-alpha: real data, envelope reaches 100% via symmetric NOESY pairing
+# TNF-alpha: real data, envelope 96.5% (predicted structure contradicts 3 NOEs)
 axB.text(len(DATA) - 1, 104, '*real', ha='center', fontsize=5.0, color=GREEN)
 axB.set_ylim(0, 116); axB.set_xlim(-0.6, len(DATA) - 0.4)
 axB.set_xticks(list(x))
 axB.set_xticklabels([f'{lab}\n{n}' for (lab, n, *_ ) in DATA], fontsize=5.6)
-axB.set_ylabel('methyl-level correct (%)', fontsize=7.0)
+axB.set_ylabel('residue-level correct (%)', fontsize=7.0)
 axB.spines[['top', 'right']].set_visible(False)
 axB.tick_params(labelsize=6.2)
 # 'B' label and legend on a clear top band, well above the axes (no title collision)
 axB.text(-0.6, 128, 'B', fontsize=13, weight='bold', va='center')
-axB.bar(-9, 0, color=BLUE, label='magicmaus +soft')
-axB.bar(-9, 0, color=PURPLE, label='MAUS (unique)')
+axB.bar(-9, 0, color=BLUE, label='magicmaus')
+axB.bar(-9, 0, color=PURPLE, label='MAUS (forced)')
 axB.bar(-9, 0, color=RED, label='MAGIC')
 axB.legend(loc='lower right', fontsize=5.8, frameon=False, ncol=3,
            bbox_to_anchor=(1.03, 1.005), handlelength=1.0, columnspacing=1.0,

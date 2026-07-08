@@ -128,20 +128,30 @@ partner separates the pair, the swap stays a genuine coin flip inside the envelo
 
 ## MAGIC (sibling engine)
 
-MAGIC has no multimer support, so it is run on a single protomer. `tnfa_protomer.pdb`
-is chain 1 of the AlphaFold model in PDB format; `convert_to_magic.py` builds the
-control bundle and `../magic/` scores it (committed result: `magic_assignments.tsv`):
+MAGIC is now multimer-aware too: `magic/structure.py` keeps every chain as a
+symmetry image (keyed by residue, no chain id — same collapse as
+`maus.parse_structure`) and scores each contact by the **minimum distance over
+subunits**, so inter-subunit NOEs enter its objective. `convert_to_magic.py`
+renders the trimer directly (a `.cif` is converted to a multi-chain PDB), so no
+protomer step is needed; `../magic/` scores it (committed result:
+`magic_assignments.tsv`):
 
 ```bash
 python convert_to_magic.py examples/TNFa/hmqc.tsv examples/TNFa/noesy_intensity.tsv \
-    examples/TNFa/tnfa_protomer.pdb magic_run_tnfa/ --tol-h 0.02 --tol-c 0.1
-# edit LABELING to AILTV (no Met), then from ../magic/:
+    examples/TNFa/fold_tnfa_trimer_model_0.cif magic_run_tnfa/ --tol-h 0.02 --tol-c 0.1
+# then from ../magic/:
 python -m magic run ../magicmaus/magic_run_tnfa/control.txt --output-dir out
 ```
 
-MAGIC assigns **2/85 = 2.4%** methyls (residue-level 5.9%) — full-space scoring
-over a near-flat real-data landscape, the same regime it hits on the simulated
-targets.
+The trimer parse adds 64 inter-subunit structural contacts (model-matrix sum
+642.8 → 715.9), lifting the best objective from 89.7 (protomer) to 156.4. Even
+so MAGIC assigns only **2/85 = 2.4%** methyls (residue-level 10.6%): its
+full-space scoring sits on a near-flat real-data landscape, so a
+physically-correcter objective does not track the truth — the same regime it
+hits on the simulated targets, and exactly why magicmaus scores *inside* the
+MAUS envelope instead. (The protomer run scored 5/85 methyl / 7/85 residue; the
+multimer objective moves calls around without net gain — climbing the correct
+landscape is not enough without the MAUS bound.)
 
 ## From raw spectra — the fully-automatic pipeline
 
